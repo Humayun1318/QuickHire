@@ -1,9 +1,12 @@
 import { Types } from 'mongoose';
-import { CreateJobDTO, IJob, JobQueryParams, UpdateJobDTO } from './jobListing.interface';
+import {
+  CreateJobDTO,
+  IJob,
+  JobQueryParams,
+  UpdateJobDTO,
+} from './jobListing.interface';
 import { Job } from './jobListing.models';
 import { Application } from '../Application/Application.models';
-
-
 
 /**
  * Create a new job listing (Admin only)
@@ -29,6 +32,8 @@ const getAllJobListing = async (
       { title: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
+      { category: { $regex: search, $options: 'i' } },
+      { location: { $regex: search, $options: 'i' } },
     ];
   }
 
