@@ -4,6 +4,7 @@ import express, { Request, Response } from 'express';
 // import { router } from './app/routes';
 import { globalErrorHandler } from './app/middlewares/globalErrorHandler';
 import notFound from './app/middlewares/notFound';
+import { router } from './app/routes';
 
 const app = express();
 
@@ -16,17 +17,18 @@ app.use(
   }),
 );
 
-app.use('/api/v1', (req: Request, res: Response) => {
-  res.status(200).json({
-    message: 'Welcome to QuickHire System Backend',
-  });
-});
+app.use('/api/v1', router);
+// app.use('/api/v1', (req: Request, res: Response) => {
+//   res.status(200).json({
+//     message: 'Welcome to QuickHire System Backend',
+//   });
+// });
 
-app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({
-    message: 'Welcome to QuickHire System Backend',
-  });
-});
+// app.get('/', (req: Request, res: Response) => {
+//   res.status(200).json({
+//     message: 'Welcome to QuickHire System Backend',
+//   });
+// });
 
 app.use(globalErrorHandler);
 

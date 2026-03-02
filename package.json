@@ -7,6 +7,7 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "generateModule": "ts-node-dev --respawn --transpile-only scripts/generate-module.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write ."
@@ -14,14 +15,19 @@
   "keywords": [],
   "author": "Humayun <humayunkabir6267@gmail.com> (https://github.com/Humayun1318)",
   "dependencies": {
+    "@types/colors": "^1.2.4",
     "@types/cors": "^2.8.19",
+    "chalk": "^5.6.2",
+    "colors": "^1.4.0",
     "cors": "^2.8.6",
-    "http-status-codes": "^2.3.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
     "mongodb": "^7.1.0",
     "mongoose": "^8.15.0",
-    "typescript": "^5.8.3"
+    "ora": "^9.3.0",
+    "typescript": "^5.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
