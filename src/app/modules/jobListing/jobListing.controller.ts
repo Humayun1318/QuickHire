@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { catchAsync } from '../../utils/catchAsync';
+import  catchAsync  from '../../utils/catchAsync';
 import httpStatus from 'http-status-codes';
 import { sendResponse } from '../../utils/sendResponse';
 import { jobListingService } from './jobListing.service';

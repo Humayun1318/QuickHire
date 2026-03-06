@@ -12,6 +12,7 @@ import { Application } from '../Application/Application.models';
  * Create a new job listing (Admin only)
  */
 const createJobListing = async (jobData: CreateJobDTO): Promise<IJob> => {
+  console.log('Creating job listing with data:', jobData);
   const job = await Job.create(jobData);
   return job;
 };

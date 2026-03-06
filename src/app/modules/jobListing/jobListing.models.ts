@@ -1,7 +1,10 @@
-import { Schema, model, Document } from 'mongoose';
-import { IJob } from './jobListing.interface';
-
-
+import { Schema, model } from 'mongoose';
+import {
+  IJob,
+  JobCategory,
+  JobLocation,
+  JobType,
+} from './jobListing.interface';
 
 const jobSchema = new Schema<IJob>(
   {
@@ -18,19 +21,23 @@ const jobSchema = new Schema<IJob>(
     location: {
       type: String,
       required: [true, 'Location is required'],
-      trim: true,
+      enum: Object.values(JobLocation),
     },
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: [
-        'Technology',
-        'Healthcare',
-        'Finance',
-        'Education',
-        'Retail',
-        'Other',
-      ],
+      enum: Object.values(JobCategory),
+    },
+    types: {
+      type: [String],
+      enum: Object.values(JobType),
+      required: true,
+      validate: {
+        validator: function (value: string[]) {
+          return Array.isArray(value) && value.length > 0;
+        },
+        message: 'At least one job type is required',
+      },
     },
     description: {
       type: String,
@@ -39,6 +46,7 @@ const jobSchema = new Schema<IJob>(
   },
   {
     timestamps: true,
+    strict: 'throw',
   },
 );
 
