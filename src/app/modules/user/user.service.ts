@@ -1,4 +1,6 @@
-const createUser = async () => {};
+const createUser = async () => {
+  
+};
 const getAllUser = async () => {};
 const getUserById = async () => {};
 const updateUser = async () => {};

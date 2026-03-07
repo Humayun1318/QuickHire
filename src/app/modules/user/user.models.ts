@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { IUser, Role, IsActive, AuthProvider } from './user.interface';
-import { lowercase, trim } from 'zod';
+import bcrypt from 'bcrypt';
 
 const authProviderSchema = new Schema(
   {
@@ -35,7 +35,7 @@ const userSchema = new Schema<IUser>(
 
     password: {
       type: String,
-      select: 0,
+      select: false,
     },
 
     phone: String,
@@ -94,5 +94,17 @@ const userSchema = new Schema<IUser>(
     versionKey: false,
   },
 );
+
+// pre hook to hash password before saving
+userSchema.pre('save', async function (next) {
+  const user = this;
+
+  if (!user.isModified('password')) return next();
+  if (!user.password) return next();
+
+  user.password = await bcrypt.hash(user.password, 10);
+
+  next();
+});
 
 export const User = model<IUser>('User', userSchema);
