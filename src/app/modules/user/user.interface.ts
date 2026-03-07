@@ -62,5 +62,5 @@ export interface IUserModel extends Model<IUser, {}, IUserMethods> {
 
   isUserExists(id: string): Promise<boolean>;
 
-  findUserByEmail(email: string): Promise<IUser | null>;
+  findUserByEmail(email: string): Promise<(IUser & IUserMethods) | null>;
 }
