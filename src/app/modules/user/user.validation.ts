@@ -1,6 +1,28 @@
 import { z } from 'zod';
 import { Role, IsActive, AuthProvider } from './user.interface';
 
+const passwordSchema = z
+  .string({
+    error: (issue) =>
+      issue.input === undefined
+        ? 'Password is required'
+        : 'Password must be a string',
+  })
+  .min(8, { message: 'Password must be at least 8 characters long' })
+  .refine((val) => /[A-Z]/.test(val), {
+    message: 'Password must contain at least one uppercase letter',
+  })
+  .refine((val) => /[a-z]/.test(val), {
+    message: 'Password must contain at least one lowercase letter',
+  })
+  .refine((val) => /\d/.test(val), {
+    message: 'Password must contain at least one number',
+  })
+  .refine((val) => /[@$!%*?&]/.test(val), {
+    message: 'Password must contain at least one special character',
+  })
+  .optional();
+
 // ----------------------
 // Auth Provider Schema
 // ----------------------
@@ -52,15 +74,7 @@ export const createUserZodSchema = z.object({
     })
     .transform((val) => val.toLowerCase()),
 
-  password: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Password is required'
-          : 'Password must be a string',
-    })
-    .min(8, 'Password must be at least 8 characters')
-    .optional(),
+  password: passwordSchema,
 
   phone: z
     .string({
@@ -153,7 +167,13 @@ export const createUserZodSchema = z.object({
   isVerified: z.boolean().optional(),
 
   auths: z
-    .array(authProviderZodSchema)
+    .array(authProviderZodSchema, {
+      error: (issue) => {
+        if (issue.input === undefined)
+          return 'Authentication provider is required';
+        return 'Auths must be an array';
+      },
+    })
     .min(1, 'At least one authentication provider is required'),
 });
 

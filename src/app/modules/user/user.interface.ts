@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
@@ -51,4 +51,16 @@ export interface IUser {
 
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface IUserMethods {
+  comparePassword(password: string): Promise<boolean>;
+}
+
+export interface IUserModel extends Model<IUser, {}, IUserMethods> {
+  findUserById(id: string): Promise<IUser | null>;
+
+  isUserExists(id: string): Promise<boolean>;
+
+  findUserByEmail(email: string): Promise<IUser | null>;
 }

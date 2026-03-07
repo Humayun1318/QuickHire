@@ -1,6 +1,13 @@
 import { Schema, model } from 'mongoose';
-import { IUser, Role, IsActive, AuthProvider } from './user.interface';
+import {
+  IUser,
+  Role,
+  IsActive,
+  AuthProvider,
+  IUserModel,
+} from './user.interface';
 import bcrypt from 'bcrypt';
+import { envVars } from '../../config/env';
 
 const authProviderSchema = new Schema(
   {
@@ -31,6 +38,7 @@ const userSchema = new Schema<IUser>(
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
 
     password: {
@@ -99,12 +107,35 @@ const userSchema = new Schema<IUser>(
 userSchema.pre('save', async function (next) {
   const user = this;
 
+  if (!user?.password) return next();
   if (!user.isModified('password')) return next();
-  if (!user.password) return next();
 
-  user.password = await bcrypt.hash(user.password, 10);
+  user.password = await bcrypt.hash(
+    user.password,
+    Number(envVars.BCRYPT_SALT_ROUND),
+  );
 
   next();
 });
 
-export const User = model<IUser>('User', userSchema);
+// Static method to find user by ID
+userSchema.statics.findUserById = function (id: string) {
+  return this.findById(id);
+};
+
+// Static method to check if user exists by ID
+userSchema.statics.isUserExists = async function (id: string) {
+  return !!(await this.exists({ _id: id }));
+};
+
+// Static method to find user by email
+userSchema.statics.findUserByEmail = function (email: string) {
+  return this.findOne({ email }).select('+password');
+};
+
+// Method to compare passwords
+userSchema.methods.comparePassword = function (password: string) {
+  return bcrypt.compare(password, this.password);
+};
+
+export const User = model<IUser, IUserModel>('User', userSchema);
