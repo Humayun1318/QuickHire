@@ -8,12 +8,12 @@ import { IsActive, IUser } from '../modules/user/user.interface';
  * @throws AppError with professional messages if user is invalid
  */
 export const validateUserStatus = (user: IUser) => {
-  if (!user.isVerified) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Account verification required. Please verify your email to proceed.',
-    );
-  }
+  // if (!user.isVerified) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'Account verification required. Please verify your email to proceed.',
+  //   );
+  // }
 
   if (user.isActive === IsActive.BLOCKED) {
     throw new AppError(

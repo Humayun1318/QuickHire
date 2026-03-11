@@ -31,6 +31,8 @@ export const checkAuth =
       // Check if user is verified, active, or blocked
       validateUserStatus(isUserExist);
 
+      // console.log('verifiedToken', verifiedToken, 'authRoles', authRoles);
+
       if (!authRoles.includes(verifiedToken.role)) {
         throw new AppError(
           httpStatus.FORBIDDEN,

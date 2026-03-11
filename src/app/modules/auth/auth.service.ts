@@ -1,10 +1,15 @@
 import { envVars } from '../../config/env';
 import AppError from '../../errorHelpers/AppError';
+import {
+  createNewAccessTokenByRefreshToken,
+  createUserTokens,
+} from '../../utils/userTokens';
 import { generateToken } from '../../utils/jwt';
 import { validateUserStatus } from '../../utils/validateUserStatus';
 import { IUser } from '../user/user.interface';
 import { User } from '../user/user.models';
 import httpStatus from 'http-status-codes';
+import { JwtPayload } from 'jsonwebtoken';
 
 const createAuth = async (payload: Partial<IUser>) => {
   const { email, password } = payload;
@@ -29,22 +34,58 @@ const createAuth = async (payload: Partial<IUser>) => {
   }
 
   // Generate JWT token
-  const jwtPayload = {
-    userId: existingUser._id,
-    email: existingUser.email,
-    role: existingUser.role,
-  };
+  const userTokens = createUserTokens(existingUser);
 
-  const accessToken = generateToken(
-    jwtPayload,
-    envVars.JWT_ACCESS_SECRET,
-    envVars.JWT_ACCESS_EXPIRES,
-  );
-
+  // Remove password from user object before sending response
+  const userObj = existingUser.toObject();
+  delete userObj.password;
   return {
-    accessToken,
+    accessToken: userTokens.accessToken,
+    refreshToken: userTokens.refreshToken,
+    user: userObj,
   };
 };
+
+const getNewAccessTokenUsingRefreshToken = async (refreshToken: string) => {
+  if (!refreshToken) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No refresh token recieved from cookies',
+    );
+  }
+
+  const accessTokenInfo =
+    await createNewAccessTokenByRefreshToken(refreshToken);
+
+  return {
+    accessToken: accessTokenInfo,
+  };
+};
+
+const changePassword = async (
+  payload: {
+    oldPassword: string;
+    newPassword: string;
+  },
+  userEmail: string,
+) => {
+  const { oldPassword, newPassword } = payload;
+  const user = await User.findUserByEmail(userEmail);
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  const isOldPasswordMatch = await user.comparePassword(oldPassword);
+  if (!isOldPasswordMatch) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'Old Password does not match');
+  }
+
+  user.password = newPassword;
+
+  await user.save();
+  return;
+};
+
 const getAllAuth = async () => {};
 const getAuthById = async () => {};
 const updateAuth = async () => {};
@@ -52,6 +93,8 @@ const deleteAuth = async () => {};
 
 export const authService = {
   createAuth,
+  getNewAccessTokenUsingRefreshToken,
+  changePassword,
   getAllAuth,
   getAuthById,
   updateAuth,

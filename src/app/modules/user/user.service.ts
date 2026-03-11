@@ -52,20 +52,20 @@ const createUser = async (payload: IUser) => {
     {
       provider: AuthProvider.CREDENTIALS,
       providerId: email,
-    }
+    },
   ];
 
   // console.log('Validated user payload:', payload);
 
   // // create user
   const user = await User.create(payload);
-
-  const userObj = user.toObject();
-  delete userObj.password;
-  return userObj;
+  return user;
   // return {message: 'User creation logic is currently disabled for testing purposes'};
 };
-const getAllUser = async () => {};
+const getAllUser = async () => {
+  const users = await User.find().lean();
+  return users;
+};
 const getUserById = async () => {};
 const updateUser = async () => {};
 const deleteUser = async () => {};

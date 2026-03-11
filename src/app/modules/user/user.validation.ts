@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Role, IsActive, AuthProvider } from './user.interface';
 
-const passwordSchema = z
+export const passwordValidationSchema = z
   .string({
     error: (issue) =>
       issue.input === undefined
@@ -23,6 +23,25 @@ const passwordSchema = z
   })
   .optional();
 
+export const emailValidationSchema = z
+  .string({
+    error: (issue) =>
+      issue.input === undefined
+        ? 'Email is required'
+        : 'Email must be a string',
+  })
+  .trim()
+  .superRefine((val, ctx) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(val)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Invalid email format',
+      });
+    }
+  })
+  .transform((val) => val.toLowerCase());
 // ----------------------
 // Auth Provider Schema
 // ----------------------
@@ -55,26 +74,8 @@ export const createUserZodSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(50, 'Name cannot exceed 50 characters'),
 
-  email: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Email is required'
-          : 'Email must be a string',
-    })
-    .trim()
-    .superRefine((val, ctx) => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(val)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Invalid email format',
-        });
-      }
-    })
-    .transform((val) => val.toLowerCase()),
-
-  password: passwordSchema,
+  email: emailValidationSchema,
+  password: passwordValidationSchema,
 
   phone: z
     .string({

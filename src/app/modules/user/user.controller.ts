@@ -14,7 +14,15 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getAllUser = catchAsync(async (req: Request, res: Response) => {});
+const getAllUser = catchAsync(async (req: Request, res: Response) => {
+  const result = await userService.getAllUser();
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Users retrieved successfully',
+    data: result,
+  });
+});
 const getUserById = catchAsync(async (req: Request, res: Response) => {});
 const updateUser = catchAsync(async (req: Request, res: Response) => {});
 const deleteUser = catchAsync(async (req: Request, res: Response) => {});
