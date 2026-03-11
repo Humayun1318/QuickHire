@@ -174,7 +174,8 @@ export const createUserZodSchema = z.object({
         return 'Auths must be an array';
       },
     })
-    .min(1, 'At least one authentication provider is required'),
+    .min(1, 'At least one authentication provider is required')
+    .optional(),
 });
 
 // ----------------------

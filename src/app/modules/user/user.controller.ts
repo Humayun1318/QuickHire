@@ -13,6 +13,7 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
 const getAllUser = catchAsync(async (req: Request, res: Response) => {});
 const getUserById = catchAsync(async (req: Request, res: Response) => {});
 const updateUser = catchAsync(async (req: Request, res: Response) => {});
