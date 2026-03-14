@@ -1,10 +1,8 @@
-import { envVars } from '../../config/env';
 import AppError from '../../errorHelpers/AppError';
 import {
   createNewAccessTokenByRefreshToken,
   createUserTokens,
 } from '../../utils/userTokens';
-import { generateToken } from '../../utils/jwt';
 import { validateUserStatus } from '../../utils/validateUserStatus';
 import { IUser } from '../user/user.interface';
 import { User } from '../user/user.models';
@@ -36,13 +34,10 @@ const createAuth = async (payload: Partial<IUser>) => {
   // Generate JWT token
   const userTokens = createUserTokens(existingUser);
 
-  // Remove password from user object before sending response
-  const userObj = existingUser.toObject();
-  delete userObj.password;
   return {
     accessToken: userTokens.accessToken,
     refreshToken: userTokens.refreshToken,
-    user: userObj,
+    user: existingUser,
   };
 };
 

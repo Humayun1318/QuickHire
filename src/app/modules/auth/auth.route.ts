@@ -1,9 +1,11 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { authController } from './auth.controller';
 import { validateRequest } from '../../middlewares/validateRequest';
 import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { Role } from '../user/user.interface';
+import passport from 'passport';
+import { envVars } from '../../config/env';
 
 const router = Router();
 
@@ -21,6 +23,28 @@ router.post(
   '/change-password',
   checkAuth(...Object.values(Role)),
   authController.changePassword,
+);
+
+//  /booking -> /login -> succesful google login -> /booking frontend
+// /login -> succesful google login -> / frontend
+router.get(
+  '/google',
+  async (req: Request, res: Response, next: NextFunction) => {
+    const redirect = req.query.redirect || '/';
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      state: redirect as string,
+    })(req, res, next);
+  },
+);
+
+// api/v1/auth/google/callback?state=/booking
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: `${envVars.FRONTEND_URL}/login?error=There is some issues with your account. Please contact with out support team!`,
+  }),
+  authController.googleCallbackController,
 );
 
 router.patch('/update/:id', authController.updateAuth);
