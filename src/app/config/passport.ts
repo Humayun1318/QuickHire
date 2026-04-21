@@ -95,6 +95,7 @@ passport.use(
         }
 
         let isUserExist = await User.findOne({ email });
+
         if (isUserExist && !isUserExist.isVerified) {
           // throw new AppError(httpStatus.BAD_REQUEST, "User is not verified")
           // done("User is not verified")
@@ -139,3 +140,18 @@ passport.use(
     },
   ),
 );
+
+
+passport.serializeUser((user: any, done: (err: any, id?: unknown) => void) => {
+    done(null, user._id)
+})
+
+passport.deserializeUser(async (id: string, done: any) => {
+    try {
+        const user = await User.findById(id);
+        done(null, user)
+    } catch (error) {
+        console.log(error);
+        done(error)
+    }
+})

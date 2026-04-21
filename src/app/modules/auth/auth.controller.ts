@@ -23,6 +23,7 @@ const credentialsLogin = catchAsync(
     //   message: 'Login successfully',
     //   data: loginInfo,
     // });
+
     // -------------using passport to credentials login-----------------------
     passport.authenticate('local', async (err: any, user: any, info: any) => {
       if (err) {
@@ -118,6 +119,8 @@ const googleCallbackController = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     let redirectTo = req.query.state ? (req.query.state as string) : '';
 
+    console.log('Redirect URL from query parameter:', redirectTo);
+
     if (redirectTo.startsWith('/')) {
       redirectTo = redirectTo.slice(1);
     }
@@ -129,8 +132,10 @@ const googleCallbackController = catchAsync(
       throw new AppError(httpStatus.NOT_FOUND, 'User Not Found');
     }
 
+    // Generate JWT tokens for the authenticated user
     const tokenInfo = createUserTokens(user);
 
+    // Set the tokens in HTTP-only cookies for secure storage
     setAuthCookie(res, tokenInfo);
 
     // sendResponse(res, {

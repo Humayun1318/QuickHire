@@ -6,7 +6,7 @@ import {
   Role,
 } from '../modules/user/user.interface';
 import { User } from '../modules/user/user.models';
-import bcrypt from 'bcrypt';
+
 
 export const seedSuperAdmin = async () => {
   try {
@@ -44,7 +44,6 @@ export const seedSuperAdmin = async () => {
 
     const superadmin = await User.create(payload);
     console.log('Super Admin Created Successfuly! \n');
-    console.log(superadmin);
   } catch (error) {
     console.log(error);
   }

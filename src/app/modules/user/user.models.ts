@@ -140,7 +140,7 @@ userSchema.statics.isUserExists = async function (id: string) {
   return !!(await this.exists({ _id: id }));
 };
 
-// Static method to find user by email
+// Static method to find user by email with password (for authentication)
 userSchema.statics.findUserByEmail = function (email: string) {
   return this.findOne({ email }).select('+password');
 };

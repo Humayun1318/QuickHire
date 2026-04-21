@@ -34,6 +34,7 @@ router.get(
     passport.authenticate('google', {
       scope: ['profile', 'email'],
       state: redirect as string,
+      // session: false,
     })(req, res, next);
   },
 );
@@ -42,7 +43,8 @@ router.get(
 router.get(
   '/google/callback',
   passport.authenticate('google', {
-    failureRedirect: `${envVars.FRONTEND_URL}/login?error=There is some issues with your account. Please contact with out support team!`,
+    // session: false,
+    failureRedirect: `${envVars.FRONTEND_URL}/login?error=There is some issues with your account. Please contact with our support team!`,
   }),
   authController.googleCallbackController,
 );

@@ -6,9 +6,7 @@ import httpStatus from 'http-status-codes';
 const createUser = async (payload: IUser) => {
   const { email } = payload;
 
-  // console.log('Creating user with payload:', payload);
-
-  // // check if user already exists
+  // // check if user already exists giving me with password field
   const existingUser = await User.findUserByEmail(email);
 
   if (existingUser) {
@@ -55,17 +53,18 @@ const createUser = async (payload: IUser) => {
     },
   ];
 
-  // console.log('Validated user payload:', payload);
-
   // // create user
   const user = await User.create(payload);
   return user;
-  // return {message: 'User creation logic is currently disabled for testing purposes'};
 };
+
+// Get all users (for admin)
 const getAllUser = async () => {
   const users = await User.find().lean();
   return users;
 };
+
+
 const getUserById = async () => {};
 const updateUser = async () => {};
 const deleteUser = async () => {};
