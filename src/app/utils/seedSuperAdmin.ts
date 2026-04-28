@@ -1,9 +1,9 @@
 import { envVars } from '../config/env';
 import {
   AuthProvider,
-  IAuthProvider,
+  IAuthEntry,
   IUser,
-  Role,
+  UserRole,
 } from '../modules/user/user.interface';
 import { User } from '../modules/user/user.models';
 
@@ -25,8 +25,8 @@ export const seedSuperAdmin = async () => {
     // will hash it automatically. Hashing it ourselves would double-hash and
     // cause bcrypt.compare to fail later.
 
-    const authProvider: IAuthProvider = {
-      provider: AuthProvider.CREDENTIALS,
+    const authProvider: IAuthEntry = {
+      provider: AuthProvider.LOCAL,
       providerId: envVars.SUPER_ADMIN_EMAIL,
     };
 
@@ -35,14 +35,14 @@ export const seedSuperAdmin = async () => {
       'name' | 'role' | 'email' | 'password' | 'isVerified' | 'auths'
     > = {
       name: 'Super admin',
-      role: Role.SUPER_ADMIN,
+      role: UserRole.SUPER_ADMIN,
       email: envVars.SUPER_ADMIN_EMAIL,
       password: envVars.SUPER_ADMIN_PASSWORD, // let mongoose hash in pre-save
       isVerified: true,
       auths: [authProvider],
     };
 
-    const superadmin = await User.create(payload);
+     await User.create(payload);
     console.log('Super Admin Created Successfuly! \n');
   } catch (error) {
     console.log(error);

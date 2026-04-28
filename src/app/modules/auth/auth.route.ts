@@ -3,12 +3,13 @@ import { authController } from './auth.controller';
 import { validateRequest } from '../../middlewares/validateRequest';
 import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { Role } from '../user/user.interface';
+import {  UserRole } from '../user/user.interface';
 import passport from 'passport';
 import { envVars } from '../../config/env';
 
 const router = Router();
 
+// Authentication routes________________________________
 router.post(
   '/login',
   validateRequest(authValidation.loginSchema),
@@ -19,14 +20,15 @@ router.post(
   authController.getNewAccessTokenUsingRefreshToken,
 );
 router.post('/logout', authController.logout);
+
+// Protected route for changing password___________________
 router.post(
   '/change-password',
-  checkAuth(...Object.values(Role)),
+  checkAuth(...Object.values(UserRole)),
   authController.changePassword,
 );
 
-//  /booking -> /login -> succesful google login -> /booking frontend
-// /login -> succesful google login -> / frontend
+// Google OAuth routes _____________________________________
 router.get(
   '/google',
   async (req: Request, res: Response, next: NextFunction) => {
@@ -38,8 +40,6 @@ router.get(
     })(req, res, next);
   },
 );
-
-// api/v1/auth/google/callback?state=/booking
 router.get(
   '/google/callback',
   passport.authenticate('google', {
@@ -48,6 +48,8 @@ router.get(
   }),
   authController.googleCallbackController,
 );
+//________________________________________________________
+
 
 router.patch('/update/:id', authController.updateAuth);
 router.delete('/delete/:id', authController.deleteAuth);

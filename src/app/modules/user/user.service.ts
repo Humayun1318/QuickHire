@@ -7,7 +7,7 @@ const createUser = async (payload: IUser) => {
   const { email } = payload;
 
   // // check if user already exists giving me with password field
-  const existingUser = await User.findUserByEmail(email);
+  const existingUser = await User.findByEmail(email);
 
   if (existingUser) {
     throw new AppError(
@@ -16,44 +16,31 @@ const createUser = async (payload: IUser) => {
     );
   }
 
-  // // ensure auth provider exists
-  // if (!payload.auths || payload.auths.length === 0) {
-  //   throw new AppError(
-  //     httpStatus.BAD_REQUEST,
-  //     'At least one authentication provider is required',
-  //   );
-  // }
-
-  // //check if CREDENTIALS provider exists
-  // const hasCredentialsProvider = payload.auths.some(
-  //   (auth) => auth.provider === AuthProvider.CREDENTIALS,
-  // );
-
-  // // local provider must have password
-  // if (hasCredentialsProvider && !payload.password) {
-  //   throw new AppError(
-  //     httpStatus.BAD_REQUEST,
-  //     'Password is required for credentials authentication',
-  //   );
-  // }
-
-  // // if oauth provider, password should not be required
-  // if (!hasCredentialsProvider && payload.password) {
-  //   delete payload.password;
-  // }
-
   // Normalize auths: set providerId to email
   payload.auths = payload?.auths?.map(() => ({
-    provider: AuthProvider.CREDENTIALS,
+    provider: AuthProvider.LOCAL,
     providerId: email,
   })) || [
     {
-      provider: AuthProvider.CREDENTIALS,
+      provider: AuthProvider.LOCAL,
       providerId: email,
     },
   ];
 
-  // // create user
+  // //check if CREDENTIALS provider exists
+  const hasCredentialsProvider = payload.auths.some(
+    (auth) => auth.provider === AuthProvider.LOCAL,
+  );
+
+  // local provider must have password
+  if (hasCredentialsProvider && !payload.password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Password is required for credentials authentication',
+    );
+  }
+
+  // create user
   const user = await User.create(payload);
   return user;
 };

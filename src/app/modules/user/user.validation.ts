@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, IsActive, AuthProvider } from './user.interface';
+import { AccountStatus, AuthProvider, UserRole } from './user.interface';
 
 export const passwordValidationSchema = z
   .string({
@@ -20,8 +20,7 @@ export const passwordValidationSchema = z
   })
   .refine((val) => /[@$!%*?&]/.test(val), {
     message: 'Password must contain at least one special character',
-  })
-  .optional();
+  });
 
 export const emailValidationSchema = z
   .string({
@@ -42,6 +41,7 @@ export const emailValidationSchema = z
     }
   })
   .transform((val) => val.toLowerCase());
+
 // ----------------------
 // Auth Provider Schema
 // ----------------------
@@ -62,130 +62,98 @@ export const authProviderZodSchema = z.object({
 // ----------------------
 // Create User Schema
 // ----------------------
-export const createUserZodSchema = z.object({
-  name: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Name is required'
-          : 'Name must be a string',
-    })
-    .trim()
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name cannot exceed 50 characters'),
-
-  email: emailValidationSchema,
-  password: passwordValidationSchema,
-
-  phone: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Phone number is required'
-          : 'Phone must be a string',
-    })
-    .min(10, 'Phone must be at least 10 digits')
-    .max(15, 'Phone number too long')
-    .optional(),
-
-  picture: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Picture URL is required'
-          : 'Picture must be a string',
-    })
-    .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
-      message: 'Picture must be a valid URL',
-    })
-    .optional(),
-
-  address: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Address is required'
-          : 'Address must be a string',
-    })
-    .max(200, 'Address cannot exceed 200 characters')
-    .optional(),
-
-  role: z.enum(Object.values(Role) as [string, ...string[]]).optional(),
-
-  skills: z
-    .array(
-      z
-        .string({
-          error: (issue) =>
-            issue.input === undefined
-              ? 'Skill is required'
-              : 'Skill must be a string',
-        })
-        .trim()
-        .min(2, 'Skill must contain at least 2 characters')
-        .transform((val) => val.toLowerCase()),
-    )
-    .min(1, 'At least one skill is required')
-    .optional(),
-
-  experience: z
-    .number({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Experience is required'
-          : 'Experience must be a number',
-    })
-    .min(0, 'Experience cannot be negative')
-    .optional(),
-
-  resume: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Resume URL is required'
-          : 'Resume must be a string',
-    })
-    .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
-      message: 'Resume must be a valid URL',
-    })
-    .optional(),
-
-  appliedJobs: z
-    .array(
-      z.string({
+export const createUserZodSchema = z
+  .object({
+    name: z
+      .string({
         error: (issue) =>
           issue.input === undefined
-            ? 'Applied Job ID is required'
-            : 'Applied Job ID must be a string',
-      }),
-    )
-    .optional(),
+            ? 'Name is required'
+            : 'Name must be a string',
+      })
+      .trim()
+      .min(2, 'Name must be at least 2 characters')
+      .max(50, 'Name cannot exceed 50 characters'),
 
-  isDeleted: z.boolean().optional(),
+    email: emailValidationSchema,
 
-  isActive: z.enum(Object.values(IsActive) as [string, ...string[]]).optional(),
+    password: passwordValidationSchema,
 
-  isVerified: z.boolean().optional(),
+    phone: z
+      .string({
+        error: (issue) =>
+          issue.input === undefined
+            ? 'Phone number is required'
+            : 'Phone must be a string',
+      })
+      .min(10, 'Phone must be at least 10 digits')
+      .max(15, 'Phone number too long')
+      .optional(),
 
-  auths: z
-    .array(authProviderZodSchema, {
-      error: (issue) => {
-        if (issue.input === undefined)
-          return 'Authentication provider is required';
-        return 'Auths must be an array';
-      },
-    })
-    .min(1, 'At least one authentication provider is required')
-    .optional(),
-});
+    avatar: z
+      .string({
+        error: (issue) =>
+          issue.input === undefined
+            ? 'Avatar URL is required'
+            : 'Avatar must be a string',
+      })
+      .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
+        message: 'Avatar must be a valid URL',
+      })
+      .optional()
+      .nullable(),
+
+    // role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
+
+    // auths: z
+    //   .array(authProviderZodSchema, {
+    //     error: (issue) => {
+    //       if (issue.input === undefined)
+    //         return 'Authentication provider is required';
+    //       return 'Auths must be an array';
+    //     },
+    //   })
+    //   .min(1, 'At least one authentication provider is required'),
+  })
+  // .superRefine((data, ctx) => {
+  //   if (data.auths) {
+  //     const hasLocal = data.auths.some(
+  //       (entry) => entry.provider === AuthProvider.LOCAL,
+  //     );
+
+  //     if (hasLocal && !data.password) {
+  //       ctx.addIssue({
+  //         code: 'custom',
+  //         message: 'Password is required for local authentication',
+  //         path: ['password'],
+  //       });
+  //     }
+
+  //     if (!hasLocal && data.password) {
+  //       ctx.addIssue({
+  //         code: 'custom',
+  //         message: 'Password should not be provided for OAuth users',
+  //         path: ['password'],
+  //       });
+  //     }
+
+  //     const providers = data.auths.map((entry) => entry.provider);
+
+  //     if (new Set(providers).size !== providers.length) {
+  //       ctx.addIssue({
+  //         code: 'custom',
+  //         message: 'Duplicate auth providers are not allowed',
+  //         path: ['auths'],
+  //       });
+  //     }
+  //   }
+  // });
 
 // ----------------------
 // Update User Schema
 // ----------------------
-// All fields optional for partial update
 export const updateUserZodSchema = createUserZodSchema.partial().refine(
   (data) => {
-    // Prevent empty string email/password on update
     if ('email' in data && data.email === '') return false;
     if ('password' in data && data.password === '') return false;
     return true;

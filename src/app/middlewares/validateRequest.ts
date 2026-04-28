@@ -9,17 +9,6 @@ import { NextFunction, Request, Response } from 'express';
 import { ZodObject } from 'zod';
 
 /**
- * Middleware factory for request validation
- *
- * Pattern: Higher-order function that accepts a Zod schema and returns middleware
- *
- * Validation Process:
- * 1. Parse request body data if it's JSON stringified (multipart form handling)
- * 2. Validate parsed body against the provided Zod schema
- * 3. Replace req.body with validated and sanitized data
- * 4. Pass to next middleware if validation succeeds
- * 5. Pass error to error handler if validation fails
- *
  * @param {ZodObject} zodSchema - Zod schema object that defines the validation rules
  * @returns {Function} Express middleware function
  *
@@ -41,23 +30,12 @@ export const validateRequest =
         // Parse stringified JSON from multipart form submission
         req.body = JSON.parse(req.body.data);
       }
-
-      /**
-       * Validate request body against the provided Zod schema
-       * - Ensures all required fields are present
-       * - Validates field types and formats
-       * - Sanitizes and transforms the data according to schema rules
-       * - Throws error if any validation fails
-       */
+      // Validate request body against the provided Zod schema
       req.body = await zodSchema.parseAsync(req.body);
 
       // Validation passed - proceed to next middleware/route handler
       next();
     } catch (error) {
-      /**
-       * Validation failed - pass error to global error handler
-       * The globalErrorHandler will catch ZodError and format it appropriately
-       */
       next(error);
     }
   };

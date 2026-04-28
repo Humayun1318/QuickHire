@@ -9,20 +9,10 @@ import { JwtPayload } from 'jsonwebtoken';
 import passport from 'passport';
 import AppError from '../../errorHelpers/AppError';
 import { createUserTokens } from '../../utils/userTokens';
+import { validateUserStatus } from '../../utils/validateUserStatus';
 
 const credentialsLogin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    // const loginInfo = await authService.createAuth(req.body);
-
-    // // Set access and refresh tokens in HTTP-only cookies
-    // setAuthCookie(res, loginInfo);
-
-    // sendResponse(res, {
-    //   statusCode: httpStatus.OK,
-    //   success: true,
-    //   message: 'Login successfully',
-    //   data: loginInfo,
-    // });
 
     // -------------using passport to credentials login-----------------------
     passport.authenticate('local', async (err: any, user: any, info: any) => {

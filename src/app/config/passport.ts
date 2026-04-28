@@ -6,8 +6,8 @@ import {
   VerifyCallback,
 } from 'passport-google-oauth20';
 import { User } from '../modules/user/user.models';
-import { IsActive, Role } from '../modules/user/user.interface';
 import { envVars } from './env';
+import { AccountStatus, AuthProvider, UserRole } from '../modules/user/user.interface';
 
 passport.use(
   new LocalStrategy(
@@ -17,57 +17,74 @@ passport.use(
     },
     async (email: string, password: string, done) => {
       try {
-        const isUserExist = await User.findUserByEmail(email);
+        const user = await User.findByEmail(email);
 
-        // if (!isUserExist) {
-        //     return done(null, false, { message: "User does not exist" })
-        // }
-
-        if (!isUserExist) {
-          return done('User does not exist');
-        }
-
-        // if (!isUserExist.isVerified) {
-        //   // throw new AppError(httpStatus.BAD_REQUEST, "User is not verified")
-        //   return done('User is not verified');
-        // }
-
-        if (
-          isUserExist.isActive === IsActive.BLOCKED ||
-          isUserExist.isActive === IsActive.INACTIVE
-        ) {
-          // throw new AppError(httpStatus.BAD_REQUEST, `User is ${isUserExist.isActive}`)
-          return done(`User is ${isUserExist.isActive}`);
-        }
-        if (isUserExist.isDeleted) {
-          // throw new AppError(httpStatus.BAD_REQUEST, "User is deleted")
-          return done('User is deleted');
-        }
-
-        const isGoogleAuthenticated = isUserExist.auths.some(
-          (providerObjects) => providerObjects.provider == 'google',
-        );
-
-        if (isGoogleAuthenticated && !isUserExist.password) {
+        // ─────────────────────────────
+        //  USER NOT FOUND
+        // ─────────────────────────────
+        if (!user) {
           return done(null, false, {
-            message:
-              'You have authenticated through Google. So if you want to login with credentials, then at first login with google and set a password for your Gmail and then you can login with email and password.',
+            message: 'User does not exist',
           });
         }
 
-        // if (isGoogleAuthenticated) {
-        //     return done("You have authenticated through Google. So if you want to login with credentials, then at first login with google and set a password for your Gmail and then you can login with email and password.")
+        // ─────────────────────────────
+        // VERIFICATION CHECK
+        // ─────────────────────────────
+        // if (!user.isVerified) {
+        //   return done(null, false, {
+        //     message: 'User is not verified',
+        //   });
         // }
 
-        const isPasswordMatched = await isUserExist.comparePassword(password);
-        if (!isPasswordMatched) {
-          return done(null, false, { message: 'Password does not match' });
+        // ─────────────────────────────
+        // STATUS CHECK (model method)
+        // ─────────────────────────────
+        if (!user.isAccountActive()) {
+          return done(null, false, {
+            message: `User is ${user.status}`,
+          });
         }
 
-        return done(null, isUserExist);
+        // ─────────────────────────────
+        // SOFT DELETE CHECK 
+        // ─────────────────────────────
+        // if ((user as any).isDeleted) {
+        //   return done(null, false, {
+        //     message: 'User is deleted',
+        //   });
+        // }
+
+        // ─────────────────────────────
+        //  GOOGLE + PASSWORD CONFLICT LOGIC
+        // ─────────────────────────────
+        const hasGoogleAuth = user.hasAuthProvider(AuthProvider.GOOGLE);
+
+        if (hasGoogleAuth && !user.password) {
+          return done(null, false, {
+            message:
+              'You registered with Google. Please login with Google first and set a password to enable credentials login.',
+          });
+        }
+
+        // ─────────────────────────────
+        // PASSWORD CHECK
+        // ─────────────────────────────
+        const isPasswordMatched = await user.comparePassword(password);
+
+        if (!isPasswordMatched) {
+          return done(null, false, {
+            message: 'Password does not match',
+          });
+        }
+
+        // ─────────────────────────────
+        // SUCCESS
+        // ─────────────────────────────
+        return done(null, user);
       } catch (error) {
-        console.log(error);
-        done(error);
+        console.log('Local Strategy Error:', error);
+        return done(error);
       }
     },
   ),
@@ -88,51 +105,75 @@ passport.use(
       done: VerifyCallback,
     ) => {
       try {
-        const email = profile.emails?.[0].value;
+        const email = profile.emails?.[0]?.value;
 
         if (!email) {
-          return done(null, false, { mesaage: 'No email found' });
+          return done(null, false, { message: 'No email found' });
         }
 
-        let isUserExist = await User.findOne({ email });
+        let user = await User.findByEmail(email);
 
-        if (isUserExist && !isUserExist.isVerified) {
-          // throw new AppError(httpStatus.BAD_REQUEST, "User is not verified")
-          // done("User is not verified")
-          return done(null, false, { message: 'User is not verified' });
+        // ─────────────────────────────
+        //  USER EXISTS
+        // ─────────────────────────────
+        if (user) {
+          //  not verified user
+          if (!user.isVerified) {
+            return done(null, false, {
+              message: 'User is not verified',
+            });
+          }
+
+          //  inactive / blocked via model method
+          if (!user.isAccountActive()) {
+            return done(null, false, {
+              message: `User is ${user.status}`,
+            });
+          }
+
+          // soft deleted (if you have this field in model)
+          // if (user.isDeleted) {
+          //   return done(null, false, {
+          //     message: 'User is deleted',
+          //   });
+          // }
+
+          // link google auth if not exists
+          if (!user.hasAuthProvider(AuthProvider.GOOGLE)) {
+            user.auths.push({
+              provider: AuthProvider.GOOGLE,
+              providerId: profile.id,
+            });
+          }
+
+          // update login info
+          user.lastLogin = new Date();
+          await user.save();
+
+          return done(null, user);
         }
 
-        if (
-          isUserExist &&
-          (isUserExist.isActive === IsActive.BLOCKED ||
-            isUserExist.isActive === IsActive.INACTIVE)
-        ) {
-          // throw new AppError(httpStatus.BAD_REQUEST, `User is ${isUserExist.isActive}`)
-          done(`User is ${isUserExist.isActive}`);
-        }
+        // ─────────────────────────────
+        //  NEW USER
+        // ─────────────────────────────
+        const newUser = await User.create({
+          email,
+          name: profile.displayName,
+          avatar: profile.photos?.[0]?.value,
+          role: UserRole.SEEKER,
+          status: AccountStatus.ACTIVE,
 
-        if (isUserExist && isUserExist.isDeleted) {
-          return done(null, false, { message: 'User is deleted' });
-          // done("User is deleted")
-        }
+          auths: [
+            {
+              provider: AuthProvider.GOOGLE,
+              providerId: profile.id,
+            },
+          ],
 
-        if (!isUserExist) {
-          isUserExist = await User.create({
-            email,
-            name: profile.displayName,
-            picture: profile.photos?.[0].value,
-            role: Role.USER,
-            isVerified: true,
-            auths: [
-              {
-                provider: 'google',
-                providerId: profile.id,
-              },
-            ],
-          });
-        }
+          lastLogin: new Date(),
+        });
 
-        return done(null, isUserExist);
+        return done(null, newUser);
       } catch (error) {
         console.log('Google Strategy Error', error);
         return done(error);

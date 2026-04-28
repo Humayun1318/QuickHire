@@ -1,64 +1,85 @@
 import { Model, Types, Document } from 'mongoose';
 
-export enum Role {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  USER = 'USER',
-  RECRUITER = 'RECRUITER',
+// Enums for user roles
+export enum UserRole {
+  SUPER_ADMIN = 'super_admin',
+  ADMIN       = 'admin',
+  SEEKER      = 'seeker',
+  EMPLOYER    = 'employer',
 }
 
+// authProvider types
 export enum AuthProvider {
-  GOOGLE = 'google',
-  CREDENTIALS = 'credentials',
+  LOCAL  = 'local', 
+  GOOGLE = 'google',  
 }
 
 // authentication providers
-export interface IAuthProvider {
-  provider: AuthProvider;
+export interface IAuthEntry {
+  provider:   AuthProvider;
   providerId: string;
 }
 
-export enum IsActive {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  BLOCKED = 'BLOCKED',
+export enum AccountStatus {
+  ACTIVE    = 'active',     // সব কিছু ঠিক আছে, login করতে পারবে
+  INACTIVE  = 'inactive',   // account deactivated (soft-delete equivalent)
+  SUSPENDED = 'suspended',  // temporarily blocked, admin review pending
+  BANNED    = 'banned',     // permanently blocked
 }
 
 export interface IUser extends Document {
-  name: string;
-  email: string;
+  // ── Core Identity ────────────────────────────────
+  name:     string;
+  email:    string;
+ 
   password?: string;
-
+ 
+  avatar?: string;
   phone?: string;
-  picture?: string;
-  address?: string;
+ 
+  // ── Role & Auth ──────────────────────────────────
+  role: UserRole;
 
-  role: Role;
-
-  skills?: string[];
-  experience?: number;
-  resume?: string;
-
-  appliedJobs?: Types.ObjectId[];
-
-  isDeleted?: boolean;
-  isActive?: IsActive;
-  isVerified?: boolean;
-
-  auths: IAuthProvider[];
-
+  auths: IAuthEntry[];
+ 
+  // ── Account Lifecycle ────────────────────────────
+  status:     AccountStatus;
+  isVerified: boolean;
+  lastLogin?: Date;
+ 
+  // ── Cross-module FK References ───────────────────
+  seekerProfileId?: Types.ObjectId;
+  companyId?:       Types.ObjectId;
+  subscriptionId?:  Types.ObjectId;
+ 
+  // ── Timestamps (Mongoose auto-manages) ───────────
   createdAt?: Date;
   updatedAt?: Date;
 }
-
+ 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INSTANCE METHODS INTERFACE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 
 export interface IUserMethods {
-  comparePassword(password: string): Promise<boolean>;
+
+  comparePassword(candidatePassword: string): Promise<boolean>;
+ 
+  isAccountActive(): boolean;
+  hasAuthProvider(provider: AuthProvider): boolean;
 }
+ 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATIC METHODS INTERFACE (Model-level)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export interface IUserModel extends Model<IUser, {}, IUserMethods> {
-  findUserById(id: string): Promise<IUser | null>;
 
-  isUserExists(id: string): Promise<boolean>;
+  // findByEmail — email দিয়ে user খোঁজে, password সহ (login এর জন্য)।
+  findByEmail(email: string): Promise<(IUser & IUserMethods) | null>;
+ 
+  // findByGoogleId — Google auth provider এর providerId (Google ID) দিয়ে user খোঁজে।
+  findByGoogleId(googleId: string): Promise<(IUser & IUserMethods) | null>;
 
-  findUserByEmail(email: string): Promise<(IUser & IUserMethods) | null>;
+  existsById(id: string): Promise<boolean>;
 }
