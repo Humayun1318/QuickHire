@@ -3,7 +3,7 @@ import { authController } from './auth.controller';
 import { validateRequest } from '../../middlewares/validateRequest';
 import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
-import {  UserRole } from '../user/user.interface';
+import { UserRole } from '../user/user.interface';
 import passport from 'passport';
 import { envVars } from '../../config/env';
 
@@ -33,19 +33,20 @@ router.get(
   '/google',
   async (req: Request, res: Response, next: NextFunction) => {
     const redirect = req.query.redirect || '/';
+    const role = req.query.role || UserRole.SEEKER; // default to SEEKER if role is not provided
+    const state = JSON.stringify({
+      redirect,
+      role,
+    });
     passport.authenticate('google', {
       scope: ['profile', 'email'],
-      state: redirect as string,
-      // session: false,
+      state,
     })(req, res, next);
   },
 );
+
 router.get(
   '/google/callback',
-  passport.authenticate('google', {
-    // session: false,
-    failureRedirect: `${envVars.FRONTEND_URL}/login?error=There is some issues with your account. Please contact with our support team!`,
-  }),
   authController.googleCallbackController,
 );
 //________________________________________________________

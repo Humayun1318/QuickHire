@@ -103,7 +103,7 @@ export const createUserZodSchema = z
       .optional()
       .nullable(),
 
-    // role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
+    role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
 
     // auths: z
     //   .array(authProviderZodSchema, {

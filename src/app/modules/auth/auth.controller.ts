@@ -105,43 +105,74 @@ const changePassword = catchAsync(
     });
   },
 );
+
 const googleCallbackController = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    let redirectTo = req.query.state ? (req.query.state as string) : '';
+    passport.authenticate(
+      'google',
+      (err:any, user:any, info:any) => {
+        try {
+          // ERROR CASE
+          if (err) {
+            return res.redirect(
+              `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
+                err || 'Internal google strategy error',
+              )}`,
+            );
+          }
 
-    console.log('Redirect URL from query parameter:', redirectTo);
+          // AUTH FAILED CASE
+          if (!user) {
+            const message =
+              info?.message || 'Authentication failed';
 
-    if (redirectTo.startsWith('/')) {
-      redirectTo = redirectTo.slice(1);
-    }
+            return res.redirect(
+              `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
+                message,
+              )}`,
+            );
+          }
 
-    // /booking => booking , => "/" => ""
-    const user = req.user as any;
+          // SUCCESS CASE
+          req.user = user;
 
-    if (!user) {
-      throw new AppError(httpStatus.NOT_FOUND, 'User Not Found');
-    }
+          // ───── STATE HANDLING ─────
+          let redirectTo = '';
 
-    // Generate JWT tokens for the authenticated user
-    const tokenInfo = createUserTokens(user);
+          if (req.query.state && typeof req.query.state === 'string') {
+            try {
+              const parsed = JSON.parse(req.query.state);
+              if (parsed?.redirect) {
+                redirectTo = parsed.redirect;
+              }
+            } catch {
+              redirectTo = '';
+            }
+          }
 
-    // Set the tokens in HTTP-only cookies for secure storage
-    setAuthCookie(res, tokenInfo);
+          if (redirectTo.startsWith('/')) {
+            redirectTo = redirectTo.slice(1);
+          }
 
-    // sendResponse(res, {
-    //     success: true,
-    //     statusCode: httpStatus.OK,
-    //     message: "Password Changed Successfully",
-    //     data: null,
-    // })
+          // ───── TOKEN + COOKIE ─────
+          const tokenInfo = createUserTokens(user);
+          setAuthCookie(res, tokenInfo);
 
-    res.redirect(`${envVars.FRONTEND_URL}/${redirectTo}`);
+          // ───── FINAL REDIRECT ─────
+          return res.redirect(
+            `${envVars.FRONTEND_URL}/${redirectTo}`,
+          );
+        } catch (error) {
+          next(error);
+        }
+      },
+    )(req, res, next);
   },
 );
-const getAllAuth = catchAsync(async (req: Request, res: Response) => {});
-const getAuthById = catchAsync(async (req: Request, res: Response) => {});
-const updateAuth = catchAsync(async (req: Request, res: Response) => {});
-const deleteAuth = catchAsync(async (req: Request, res: Response) => {});
+const getAllAuth = catchAsync(async (req: Request, res: Response) => { });
+const getAuthById = catchAsync(async (req: Request, res: Response) => { });
+const updateAuth = catchAsync(async (req: Request, res: Response) => { });
+const deleteAuth = catchAsync(async (req: Request, res: Response) => { });
 
 export const authController = {
   createAuth: credentialsLogin,

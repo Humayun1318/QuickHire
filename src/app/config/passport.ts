@@ -78,6 +78,9 @@ passport.use(
           });
         }
 
+        user.lastLogin = new Date();
+        await user.save();
+
         // ─────────────────────────────
         // SUCCESS
         // ─────────────────────────────
@@ -97,19 +100,40 @@ passport.use(
       clientID: envVars.GOOGLE_CLIENT_ID,
       clientSecret: envVars.GOOGLE_CLIENT_SECRET,
       callbackURL: envVars.GOOGLE_CALLBACK_URL,
+      passReqToCallback: true,
     },
     async (
+      req: any,
       accessToken: string,
       refreshToken: string,
       profile: Profile,
       done: VerifyCallback,
     ) => {
       try {
+        // SAFE STATE PARSE
+        let state: any = {};
+
+        if (req.query.state && typeof req.query.state === 'string') {
+          try {
+            state = JSON.parse(req.query.state);
+          } catch {
+            state = {};
+          }
+        }
+
         const email = profile.emails?.[0]?.value;
 
         if (!email) {
-          return done(null, false, { message: 'No email found' });
+          return done(null, false, {
+            message: 'No email found',
+          });
         }
+
+        if (state && state?.role && !Object.values(UserRole).includes(state.role)) {
+           return done("Invalid role");
+        }
+
+        const role = state?.role || UserRole.SEEKER;
 
         let user = await User.findByEmail(email);
 
@@ -160,16 +184,15 @@ passport.use(
           email,
           name: profile.displayName,
           avatar: profile.photos?.[0]?.value,
-          role: UserRole.SEEKER,
+          role,
           status: AccountStatus.ACTIVE,
-
+          isVerified: true,
           auths: [
             {
               provider: AuthProvider.GOOGLE,
               providerId: profile.id,
             },
           ],
-
           lastLogin: new Date(),
         });
 
@@ -184,15 +207,15 @@ passport.use(
 
 
 passport.serializeUser((user: any, done: (err: any, id?: unknown) => void) => {
-    done(null, user._id)
+  done(null, user._id)
 })
 
 passport.deserializeUser(async (id: string, done: any) => {
-    try {
-        const user = await User.findById(id);
-        done(null, user)
-    } catch (error) {
-        console.log(error);
-        done(error)
-    }
+  try {
+    const user = await User.findById(id);
+    done(null, user)
+  } catch (error) {
+    console.log(error);
+    done(error)
+  }
 })
