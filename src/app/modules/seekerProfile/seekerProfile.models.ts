@@ -111,6 +111,7 @@ const seekerProfileSchema = new Schema<
         languages: {
             type: [String],
             default: [],
+            set: (languages: string[] = []) => languages.map((l) => l.toLowerCase().trim()),
         },
 
         expectedSalary: {
@@ -239,9 +240,9 @@ seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
     const update = this.getUpdate() as Record<string, any>;
 
     // when education and experience are updated, they call this hook but they don't update seeker profile directly, so we need to skip completeness calculation in that case
-    // if (update['$inc']?.profileCompleteness !== undefined) {
-    //     return next();
-    // }
+    if (update['$inc']?.profileCompleteness !== undefined) {
+        return next();
+    }
     if (update) {
         // Fetch the current doc to merge with incoming updates for accurate scoring
         const doc = await this.model.findOne(this.getQuery());

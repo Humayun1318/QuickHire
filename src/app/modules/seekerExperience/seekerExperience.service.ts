@@ -10,6 +10,7 @@ import { ISeekerExperience } from './seekerExperience.interface';
 import { SeekerExperience } from './seekerExperience.models';
 import { SeekerProfile } from '../seekerProfile/seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
+import { seekerProfileService } from '../seekerProfile/seekerProfile.service';
 
 const createExperience = async (
   userId: string,
@@ -25,6 +26,8 @@ const createExperience = async (
 
   const isFirst = (await SeekerExperience.countDocuments({ userId })) === 0;
 
+  console.log('Creating experience for userId:', isFirst, userId);
+
   const experience = await SeekerExperience.create({
     ...payload,
     userId,
@@ -33,9 +36,12 @@ const createExperience = async (
 
   // Bump profile completeness only on first experience — consistent with education logic
   if (isFirst) {
-    await SeekerProfile.findByIdAndUpdate(profile._id, {
-      $inc: { profileCompleteness: EXPERIENCE_COMPLETENESS_POINTS },
-    });
+    // await SeekerProfile.findByIdAndUpdate(profile._id, {
+    //   $inc: { profileCompleteness: EXPERIENCE_COMPLETENESS_POINTS },
+    // });
+    console.log('Incrementing profile completeness for userId:', userId);
+     
+    seekerProfileService.incrementCompleteness(userId, EXPERIENCE_COMPLETENESS_POINTS);
   }
 
   return experience;

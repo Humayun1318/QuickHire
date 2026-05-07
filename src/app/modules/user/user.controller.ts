@@ -30,7 +30,14 @@ const getAllUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getUserById = catchAsync(async (req: Request, res: Response) => {
-  // TODO: Implement get user by ID logic
+  const result = await userService.getUserById(req.params.id);
+  // Send success response with user data
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User retrieved successfully',
+    data: result,
+  });
 });
 
 const updateUser = catchAsync(async (req: Request, res: Response) => {

@@ -52,7 +52,13 @@ const getAllUser = async () => {
 };
 
 
-const getUserById = async () => {};
+const getUserById = async (id: string) => {
+  const user = await User.findById(id).lean();
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  return user;
+};
 const updateUser = async () => {};
 const deleteUser = async () => {};
 
