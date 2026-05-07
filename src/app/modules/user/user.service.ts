@@ -6,7 +6,7 @@ import httpStatus from 'http-status-codes';
 const createUser = async (payload: IUser) => {
   const { email } = payload;
 
-  // // check if user already exists giving me with password field
+  // check if user already exists giving me with password field
   const existingUser = await User.findByEmail(email);
 
   if (existingUser) {

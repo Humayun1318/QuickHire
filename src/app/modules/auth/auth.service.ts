@@ -18,7 +18,7 @@ const createAuth = async (payload: Partial<IUser>) => {
     );
   }
 
-  const existingUser = await User.findUserByEmail(email!);
+  const existingUser = await User.findByEmail(email!);
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'No user found with this email');
   }
@@ -65,7 +65,7 @@ const changePassword = async (
   userEmail: string,
 ) => {
   const { oldPassword, newPassword } = payload;
-  const user = await User.findUserByEmail(userEmail);
+  const user = await User.findByEmail(userEmail);
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }

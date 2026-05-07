@@ -1,8 +1,3 @@
-/**
- * @file jwt.ts
- * @description JWT (JSON Web Token) generation and verification utilities
- * Handles token creation and validation for user authentication
- */
 
 import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 
@@ -44,7 +39,7 @@ export const generateToken = (
   payload: JwtPayload,
   jwtSecret: string,
   expiresIn: string,
-) => {
+): string => {
   /**
    * Sign the payload with the provided secret
    * - Payload: Contains the actual data (claims)
@@ -80,16 +75,8 @@ export const generateToken = (
  * - Invalid (signature doesn't match)
  * - Expired (current time > expiration time)
  * - Malformed (not a valid JWT)
- *
- * Usage Example:
- * try {
- *   const decoded = verifyToken(token, process.env.JWT_ACCESS_SECRET);
- *   console.log(decoded); // { userId: '123', email: 'user@example.com', ... }
- * } catch (error) {
- *   console.log('Token invalid or expired');
- * }
- */
-export const verifyToken = (token: string, jwtSecret: string) => {
+ * */
+export const verifyToken = (token: string, jwtSecret: string): string | jwt.JwtPayload => {
   /**
    * Verify token signature and expiration
    * Throws error if verification fails
