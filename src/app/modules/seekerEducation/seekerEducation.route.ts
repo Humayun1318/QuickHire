@@ -1,12 +1,36 @@
-import { Router } from 'express';
+import express from 'express';
+import { checkAuth } from '../../middlewares/checkAuth';
+import { validateRequest } from '../../middlewares/validateRequest';
 import { seekerEducationController } from './seekerEducation.controller';
+import { seekerEducationValidation } from './seekerEducation.validation';
+import { UserRole } from '../user/user.interface';
 
-const router = Router();
+const router = express.Router();
 
-router.post('/create', seekerEducationController.createSeekerEducation);
-router.patch('/update/:id', seekerEducationController.updateSeekerEducation);
-router.delete('/delete/:id', seekerEducationController.deleteSeekerEducation);
-router.get('/:id', seekerEducationController.getSeekerEducationById);
-router.get('/', seekerEducationController.getAllSeekerEducation);
+router.post(
+  '/',
+  checkAuth(UserRole.SEEKER),
+  validateRequest(seekerEducationValidation.createEducationSchema),
+  seekerEducationController.createEducation,
+);
+
+router.get(
+  '/',
+  checkAuth(UserRole.SEEKER),
+  seekerEducationController.getMyEducations,
+);
+
+router.patch(
+  '/:educationId',
+  checkAuth(UserRole.SEEKER),
+  validateRequest(seekerEducationValidation.updateEducationSchema),
+  seekerEducationController.updateEducation,
+);
+
+router.delete(
+  '/:educationId',
+  checkAuth(UserRole.SEEKER),
+  seekerEducationController.deleteEducation,
+);
 
 export const seekerEducationRoutes = router;
