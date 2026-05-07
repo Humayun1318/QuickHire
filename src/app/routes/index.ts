@@ -10,6 +10,9 @@ import { jobListingRoutes } from '../modules/jobListing/jobListing.route';
 import { ApplicationRoutes } from '../modules/Application/Application.route';
 import { userRoutes } from '../modules/user/user.route';
 import { authRoutes } from '../modules/auth/auth.route';
+import { seekerExperienceRoutes } from '../modules/seekerExperience/seekerExperience.route';
+import { seekerEducationRoutes } from '../modules/seekerEducation/seekerEducation.route';
+import { seekerProfileRoutes } from '../modules/seekerProfile/seekerProfile.route';
 
 // Initialize Express router for API routes
 export const router = Router();
@@ -42,6 +45,18 @@ const moduleRoutes = [
     // Authentication endpoints: /api/v1/auth
     path: '/auth',
     route: authRoutes,
+  },
+  {
+    path: '/seeker-profiles',
+    route: seekerProfileRoutes
+  },
+  {
+    path: '/seeker-educations',
+    route: seekerEducationRoutes
+  },
+  {
+    path: '/seeker-experiences',
+    route: seekerExperienceRoutes
   },
 ];
 

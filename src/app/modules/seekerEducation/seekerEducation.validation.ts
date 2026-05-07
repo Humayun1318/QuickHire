@@ -49,7 +49,28 @@ const updateEducationSchema = z
         description: z.string().trim().max(500).optional(),
         isCurrentlyStudying: z.boolean().optional(),
     })
-    .partial()
+    .superRefine((data, ctx) => {
+        const start = data.startDate ? new Date(data.startDate) : null;
+        const end = data.endDate ? new Date(data.endDate) : null;
+
+        // ❌ rule 1: endDate must be after startDate
+        if (start && end && end < start) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["endDate"],
+                message: "End date must be after start date",
+            });
+        }
+
+        // ❌ rule 2: if not currently studying → endDate required
+        if (data.isCurrentlyStudying === false && !data.endDate) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["endDate"],
+                message: "End date is required when not currently studying",
+            });
+        }
+    });
 
 
 export const seekerEducationValidation = {
