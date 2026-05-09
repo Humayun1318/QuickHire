@@ -8,6 +8,7 @@ import { ISeekerEducation } from './seekerEducation.interface';
 import { SeekerEducation } from './seekerEducation.models';
 import { SeekerProfile } from '../seekerProfile/seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
+import { seekerProfileService } from '../seekerProfile/seekerProfile.service';
 
 const createEducation = async (
   userId: string,
@@ -33,9 +34,7 @@ const createEducation = async (
   // Bump completeness score only on first education entry —
   // subsequent entries don't add more points (field is already "filled")
   if (isFirst) {
-    await SeekerProfile.findByIdAndUpdate(profile._id, {
-      $inc: { profileCompleteness: EDUCATION_COMPLETENESS_POINTS },
-    });
+    seekerProfileService.incrementCompleteness(userId, EDUCATION_COMPLETENESS_POINTS);
   }
 
   return education;
@@ -69,14 +68,58 @@ const updateEducation = async (
   return updated;
 };
 
-const deleteEducation = async (educationId: string, userId: string) => {
-  const education = await SeekerEducation.isOwnedByUser(educationId, userId);
-  if (!education) {
-    throw new AppError(httpStatus.FORBIDDEN, EDUCATION_NOT_OWNED);
-  }
+const deleteEducation = async (
+  educationId: string,
+  userId: string,
+) => {
+  const session = await SeekerEducation.startSession();
 
-  await SeekerEducation.findByIdAndDelete(educationId);
-  return { message: 'Education record deleted' };
+  try {
+    session.startTransaction();
+
+    const education = await SeekerEducation.isOwnedByUser(
+      educationId,
+      userId,
+    );
+
+    if (!education) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        EDUCATION_NOT_OWNED,
+      );
+    }
+
+    // Delete education
+    await SeekerEducation.findByIdAndDelete(
+      educationId,
+      { session },
+    );
+
+    // Check if user still has any education
+    const remainingEducation = await SeekerEducation.findOne({
+      userId: userId,
+    }).session(session);
+
+    // If no education left, decrement completeness
+    if (!remainingEducation) {
+      seekerProfileService.incrementCompleteness(
+        userId,
+        -EDUCATION_COMPLETENESS_POINTS,
+        session,
+      );
+    }
+
+    await session.commitTransaction();
+
+    return {
+      message: 'Education record deleted',
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 export const seekerEducationService = {

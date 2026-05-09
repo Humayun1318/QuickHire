@@ -236,35 +236,79 @@ seekerProfileSchema.pre('save', function (next) {
 
 // Pre-findOneAndUpdate: recalculate completeness when updating via findOneAndUpdate
 // Note: 'this' here is the query, not the document
+// seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
+//     const update = this.getUpdate() as Record<string, any>;
+
+//     // when education and experience are updated, they call this hook but they don't update seeker profile directly, so we need to skip completeness calculation in that case
+//     if (update['$inc']?.profileCompleteness !== undefined) {
+//         return next();
+//     }
+//     if (update) {
+//         // Fetch the current doc to merge with incoming updates for accurate scoring
+//         const doc = await this.model.findOne(this.getQuery());
+//         if (doc) {
+//             const merged = Object.assign(doc.toObject(), update['$set'] ?? update);
+//             // Temporarily assign to calculate
+//             const tempScore = Object.keys(PROFILE_COMPLETENESS_WEIGHTS).reduce(
+//                 (score, key) => {
+//                     if (merged[key]) return score + PROFILE_COMPLETENESS_WEIGHTS[key];
+//                     return score;
+//                 },
+//                 0,
+//             );
+//             this.setUpdate({
+//                 ...update,
+//                 $set: {
+//                     ...(update['$set'] as object),
+//                     profileCompleteness: Math.min(tempScore, 100),
+//                 },
+//             });
+//         }
+//      console.log('Pre-update hook: recalculated profileCompleteness:', this.getUpdate());
+//     }
+//     next();
+// });
 seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
     const update = this.getUpdate() as Record<string, any>;
 
-    // when education and experience are updated, they call this hook but they don't update seeker profile directly, so we need to skip completeness calculation in that case
+    // Skip recalculation when only incrementing/decrementing completeness
     if (update['$inc']?.profileCompleteness !== undefined) {
         return next();
     }
-    if (update) {
-        // Fetch the current doc to merge with incoming updates for accurate scoring
-        const doc = await this.model.findOne(this.getQuery());
-        if (doc) {
-            const merged = Object.assign(doc.toObject(), update['$set'] ?? update);
-            // Temporarily assign to calculate
-            const tempScore = Object.keys(PROFILE_COMPLETENESS_WEIGHTS).reduce(
-                (score, key) => {
-                    if (merged[key]) return score + PROFILE_COMPLETENESS_WEIGHTS[key];
-                    return score;
-                },
-                0,
-            );
-            this.setUpdate({
-                ...update,
-                $set: {
-                    ...(update['$set'] as object),
-                    profileCompleteness: Math.min(tempScore, 100),
-                },
-            });
-        }
+
+    // Get current document from DB
+    const doc = await this.model.findOne(this.getQuery());
+
+    if (!doc) {
+        return next();
     }
+
+    // Merge existing data + incoming update
+    const mergedData = {
+        ...doc.toObject(),
+        ...(update.$set ?? update),
+    };
+
+    // Create temporary mongoose document
+    const tempDoc = new this.model(mergedData);
+
+    // Preserve externally added completeness
+    const existingExtraCompleteness =
+        doc.profileCompleteness - doc.calculateCompleteness();
+
+    // Recalculate
+    const recalculated =
+        tempDoc.calculateCompleteness() + existingExtraCompleteness;
+
+    // Inject updated completeness into update query
+    this.setUpdate({
+        ...update,
+        $set: {
+            ...(update.$set || {}),
+            profileCompleteness: Math.min(recalculated, 100),
+        },
+    });
+
     next();
 });
 

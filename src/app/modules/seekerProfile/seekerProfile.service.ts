@@ -7,6 +7,7 @@ import {
 import { ISeekerProfile } from './seekerProfile.interface';
 import { SeekerProfile } from './seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
+import mongoose from 'mongoose';
 
 // ─────────────────────────────────────────────────────────────
 // Create — one profile per user enforced at model (unique) and service layer
@@ -46,10 +47,10 @@ const getMyProfile = async (userId: string) => {
 // Get public profile by profileId — for employers and job detail pages
 // ─────────────────────────────────────────────────────────────
 
-const getProfileById = async (profileId: string) => {
+const getProfileById = async (profileId: string, active: boolean = true) => {
   const profile = await SeekerProfile.findOne({
     _id: profileId,
-    isActive: true,
+    isActive: active,
   }).populate('userId', 'name email');
 
   if (!profile) {
@@ -58,6 +59,15 @@ const getProfileById = async (profileId: string) => {
 
   return profile;
 };
+
+// ─────────────────────────────────────────────────────────────
+// Get all active profiles — for employer directory listing
+// ─────────────────────────────────────────────────────────────
+const getAllProfiles = async (active: boolean = true) => {
+  const profiles = await SeekerProfile.find({ isActive: active }).populate('userId', 'name email');
+  return profiles;
+};
+
 
 // ─────────────────────────────────────────────────────────────
 // Update — partial update, completeness recalculated via pre hook
@@ -109,10 +119,12 @@ const deleteSeekerProfile = async (userId: string) => {
 const incrementCompleteness = async (
   userId: string,
   points: number,
+  session?: mongoose.ClientSession, // Optional session for transaction support
 ) => {
   await SeekerProfile.findOneAndUpdate(
     { userId },
     { $inc: { profileCompleteness: points } },
+    { new: true, session }
   );
 };
 
@@ -120,6 +132,7 @@ export const seekerProfileService = {
   createSeekerProfile,
   getMyProfile,
   getProfileById,
+  getAllProfiles,
   updateSeekerProfile,
   deleteSeekerProfile,
   incrementCompleteness,

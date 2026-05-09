@@ -25,7 +25,7 @@ router.get(
 
 // Get any public profile — employers and admins can view
 router.get(
-    '/:profileId',
+    '/',
     checkAuth(UserRole.EMPLOYER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
     seekerProfileController.getProfileById,
 );

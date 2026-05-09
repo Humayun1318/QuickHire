@@ -1,6 +1,6 @@
 
 import httpStatus from 'http-status-codes';
-
+import mongoose from 'mongoose';
 import {
   EXPERIENCE_COMPLETENESS_POINTS,
   EXPERIENCE_NOT_FOUND,
@@ -11,6 +11,7 @@ import { SeekerExperience } from './seekerExperience.models';
 import { SeekerProfile } from '../seekerProfile/seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
 import { seekerProfileService } from '../seekerProfile/seekerProfile.service';
+
 
 const createExperience = async (
   userId: string,
@@ -26,8 +27,6 @@ const createExperience = async (
 
   const isFirst = (await SeekerExperience.countDocuments({ userId })) === 0;
 
-  console.log('Creating experience for userId:', isFirst, userId);
-
   const experience = await SeekerExperience.create({
     ...payload,
     userId,
@@ -39,7 +38,6 @@ const createExperience = async (
     // await SeekerProfile.findByIdAndUpdate(profile._id, {
     //   $inc: { profileCompleteness: EXPERIENCE_COMPLETENESS_POINTS },
     // });
-    console.log('Incrementing profile completeness for userId:', userId);
      
     seekerProfileService.incrementCompleteness(userId, EXPERIENCE_COMPLETENESS_POINTS);
   }
@@ -75,14 +73,62 @@ const updateExperience = async (
   return updated;
 };
 
-const deleteExperience = async (experienceId: string, userId: string) => {
-  const experience = await SeekerExperience.isOwnedByUser(experienceId, userId);
-  if (!experience) {
-    throw new AppError(httpStatus.FORBIDDEN, EXPERIENCE_NOT_OWNED);
-  }
 
-  await SeekerExperience.findByIdAndDelete(experienceId);
-  return { message: 'Experience record deleted' };
+
+const deleteExperience = async (
+  experienceId: string,
+  userId: string,
+) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    // Check ownership
+    const experience = await SeekerExperience.isOwnedByUser(
+      experienceId,
+      userId,
+    );
+
+    if (!experience) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        EXPERIENCE_NOT_OWNED,
+      );
+    }
+
+    // Delete experience
+    await SeekerExperience.findByIdAndDelete(experienceId, {
+      session,
+    });
+    
+    // Check if user still has any experience
+    const remainingExperience = await SeekerExperience.findOne(
+      {
+         userId: userId,
+      },
+    ).session(session);
+
+    // If no experience left
+    if (!remainingExperience) {
+      await seekerProfileService.incrementCompleteness(
+        userId,
+        -EXPERIENCE_COMPLETENESS_POINTS,
+        session,
+      );
+    }
+
+    await session.commitTransaction();
+
+    return {
+      message: 'Experience record deleted',
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 
 export const seekerExperienceService = {

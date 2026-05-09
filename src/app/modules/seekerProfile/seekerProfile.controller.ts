@@ -4,6 +4,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { seekerProfileService } from './seekerProfile.service';
 import catchAsync from '../../utils/catchAsync';
 import { JwtPayload } from 'jsonwebtoken';
+import { parseBoolean } from '../user/parseBoolean';
 
 // POST /seeker-profiles
 const createSeekerProfile = catchAsync(async (req: Request, res: Response) => {
@@ -35,15 +36,24 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /seeker-profiles/:profileId
+// GET /seeker-profiles?profileId=12345
 const getProfileById = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as JwtPayload).userId;
-  const result = await seekerProfileService.getProfileById(req.params.profileId);
+  // const userId = (req.user as JwtPayload).userId;
+  const active = parseBoolean(req.query.active as string);
+  let result;
+  let message;
+  if (req.query?.profileId) {
+    result = await seekerProfileService.getProfileById(req.query?.profileId as string, active);
+    message = 'Profile retrieved successfully';
+  }else {
+    result = await seekerProfileService.getAllProfiles(active);
+    message = 'Profiles retrieved successfully';
+  }
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Profile retrieved successfully',
+    message: message,
     data: result,
   });
 });
