@@ -71,6 +71,7 @@ const seekerExperienceSchema = new Schema<
         responsibilities: {
             type: [String],
             default: [],
+            set: (res: string[]) => res.map((r) => r.toLowerCase().trim()),
         },
 
         // Normalized to lowercase for consistent skill-based search
@@ -97,10 +98,10 @@ const seekerExperienceSchema = new Schema<
 // ─────────────────────────────────────────────────────────────
 
 // Primary list query: all experiences for a profile, newest first
-seekerExperienceSchema.index({ profileId: 1, startDate: -1 });
+// seekerExperienceSchema.index({ profileId: 1, startDate: -1 });
 
 // Ownership check — used in update/delete authorization
-seekerExperienceSchema.index({ _id: 1, userId: 1 });
+// seekerExperienceSchema.index({ _id: 1, userId: 1 });
 
 // Technology search — employers searching for candidates with specific tech
 seekerExperienceSchema.index({ technologiesUsed: 1 });

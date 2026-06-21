@@ -26,20 +26,20 @@ const addressSchema = z.object({
                 .optional(),
         })
         .optional(),
-});
+}).nullable();
 
 const socialLinksSchema = z.object({
     linkedin: z.url({ error: "Invalid LinkedIn URL" }).optional(),
     github: z.url({ error: "Invalid GitHub URL" }).optional(),
     portfolio: z.url({ error: "Invalid portfolio URL" }).optional(),
     twitter: z.url({ error: "Invalid Twitter URL" }).optional(),
-});
+}).nullable();
 
 const expectedSalarySchema = z.object({
     amount: z.number().nonnegative('Salary cannot be negative'),
     currency: z.enum(SalaryCurrency).default(SalaryCurrency.BDT),
     isNegotiable: z.boolean().default(true),
-});
+}).nullable();
 
 // ─────────────────────────────────────────────────────────────
 // Create — all optional except userId is taken from JWT (req.user)

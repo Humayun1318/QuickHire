@@ -1,4 +1,3 @@
-import httpStatus from 'http-status-codes';
 import {
   EDUCATION_COMPLETENESS_POINTS,
   EDUCATION_NOT_FOUND,
@@ -9,6 +8,8 @@ import { SeekerEducation } from './seekerEducation.models';
 import { SeekerProfile } from '../seekerProfile/seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
 import { seekerProfileService } from '../seekerProfile/seekerProfile.service';
+import mongoose from 'mongoose';
+import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 const createEducation = async (
   userId: string,
@@ -18,7 +19,7 @@ const createEducation = async (
   const profile = await SeekerProfile.isProfileExists(userId);
   if (!profile) {
     throw new AppError(
-      httpStatus.NOT_FOUND,
+      HTTP_STATUS_CODE.NOT_FOUND,
       'Seeker profile not found. Please create a profile first.',
     );
   }
@@ -34,7 +35,7 @@ const createEducation = async (
   // Bump completeness score only on first education entry —
   // subsequent entries don't add more points (field is already "filled")
   if (isFirst) {
-    seekerProfileService.incrementCompleteness(userId, EDUCATION_COMPLETENESS_POINTS);
+    await seekerProfileService.incrementCompleteness(userId, EDUCATION_COMPLETENESS_POINTS);
   }
 
   return education;
@@ -52,7 +53,7 @@ const updateEducation = async (
   // Ownership check before update — prevents users editing others' records
   const education = await SeekerEducation.isOwnedByUser(educationId, userId);
   if (!education) {
-    throw new AppError(httpStatus.FORBIDDEN, EDUCATION_NOT_OWNED);
+    throw new AppError(HTTP_STATUS_CODE.FORBIDDEN, EDUCATION_NOT_OWNED);
   }
 
   const updated = await SeekerEducation.findByIdAndUpdate(
@@ -62,7 +63,7 @@ const updateEducation = async (
   );
 
   if (!updated) {
-    throw new AppError(httpStatus.NOT_FOUND, EDUCATION_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, EDUCATION_NOT_FOUND);
   }
 
   return updated;
@@ -72,7 +73,7 @@ const deleteEducation = async (
   educationId: string,
   userId: string,
 ) => {
-  const session = await SeekerEducation.startSession();
+ const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
@@ -84,7 +85,7 @@ const deleteEducation = async (
 
     if (!education) {
       throw new AppError(
-        httpStatus.FORBIDDEN,
+        HTTP_STATUS_CODE.FORBIDDEN,
         EDUCATION_NOT_OWNED,
       );
     }
@@ -102,7 +103,7 @@ const deleteEducation = async (
 
     // If no education left, decrement completeness
     if (!remainingEducation) {
-      seekerProfileService.incrementCompleteness(
+      await seekerProfileService.incrementCompleteness(
         userId,
         -EDUCATION_COMPLETENESS_POINTS,
         session,

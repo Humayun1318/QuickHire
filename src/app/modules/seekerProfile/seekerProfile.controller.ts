@@ -1,22 +1,22 @@
-import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
 import { sendResponse } from '../../utils/sendResponse';
 import { seekerProfileService } from './seekerProfile.service';
 import catchAsync from '../../utils/catchAsync';
-import { JwtPayload } from 'jsonwebtoken';
 import { parseBoolean } from '../user/parseBoolean';
+import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
+import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 // POST /seeker-profiles
 const createSeekerProfile = catchAsync(async (req: Request, res: Response) => {
   // userId comes from decoded JWT — never trust client-supplied userId
-  const userId = (req.user as JwtPayload).userId;
+  const userId = getUserIdFromReq(req);
   const result = await seekerProfileService.createSeekerProfile(
     userId,
     req.body,
   );
 
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: HTTP_STATUS_CODE.CREATED,
     success: true,
     message: 'Seeker profile created successfully',
     data: result,
@@ -25,11 +25,11 @@ const createSeekerProfile = catchAsync(async (req: Request, res: Response) => {
 
 // GET /seeker-profiles/me
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as JwtPayload).userId;
+  const userId = getUserIdFromReq(req);
   const result = await seekerProfileService.getMyProfile(userId);
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: HTTP_STATUS_CODE.OK,
     success: true,
     message: 'Profile retrieved successfully',
     data: result,
@@ -45,13 +45,13 @@ const getProfileById = catchAsync(async (req: Request, res: Response) => {
   if (req.query?.profileId) {
     result = await seekerProfileService.getProfileById(req.query?.profileId as string, active);
     message = 'Profile retrieved successfully';
-  }else {
+  } else {
     result = await seekerProfileService.getAllProfiles(active);
     message = 'Profiles retrieved successfully';
   }
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: HTTP_STATUS_CODE.OK,
     success: true,
     message: message,
     data: result,
@@ -60,14 +60,14 @@ const getProfileById = catchAsync(async (req: Request, res: Response) => {
 
 // PATCH /seeker-profiles/me
 const updateSeekerProfile = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as JwtPayload).userId;
+  const userId = getUserIdFromReq(req);
   const result = await seekerProfileService.updateSeekerProfile(
     userId,
     req.body,
   );
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: HTTP_STATUS_CODE.OK,
     success: true,
     message: 'Profile updated successfully',
     data: result,
@@ -76,11 +76,11 @@ const updateSeekerProfile = catchAsync(async (req: Request, res: Response) => {
 
 // DELETE /seeker-profiles/me
 const deleteSeekerProfile = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.user as JwtPayload).userId;
+  const userId = getUserIdFromReq(req);
   const result = await seekerProfileService.deleteSeekerProfile(userId);
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: HTTP_STATUS_CODE.OK,
     success: true,
     message: 'Profile deleted successfully',
     data: result,

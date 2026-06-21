@@ -97,7 +97,7 @@ const seekerProfileSchema = new Schema<
 
         address: {
             type: addressSchema,
-            default: undefined,
+            default: null,
         },
 
         // Array of skill strings — indexed for search performance
@@ -116,7 +116,7 @@ const seekerProfileSchema = new Schema<
 
         expectedSalary: {
             type: expectedSalarySchema,
-            default: undefined,
+            default: null,
         },
 
         jobPreference: {
@@ -132,7 +132,7 @@ const seekerProfileSchema = new Schema<
 
         socialLinks: {
             type: socialLinksSchema,
-            default: undefined,
+            default: null,
         },
 
         // Cached completeness score — recalculated on every save via pre-save hook

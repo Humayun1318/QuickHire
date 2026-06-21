@@ -1,5 +1,4 @@
 
-import httpStatus from 'http-status-codes';
 import {
   SEEKER_PROFILE_ALREADY_EXISTS,
   SEEKER_PROFILE_NOT_FOUND,
@@ -8,6 +7,7 @@ import { ISeekerProfile } from './seekerProfile.interface';
 import { SeekerProfile } from './seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
 import mongoose from 'mongoose';
+import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 // ─────────────────────────────────────────────────────────────
 // Create — one profile per user enforced at model (unique) and service layer
@@ -20,7 +20,7 @@ const createSeekerProfile = async (
   // Guard: prevent duplicate profiles (belt-and-suspenders with unique index)
   const existing = await SeekerProfile.isProfileExists(userId);
   if (existing) {
-    throw new AppError(httpStatus.CONFLICT, SEEKER_PROFILE_ALREADY_EXISTS);
+    throw new AppError(HTTP_STATUS_CODE.CONFLICT, SEEKER_PROFILE_ALREADY_EXISTS);
   }
 
   const profile = await SeekerProfile.create({ ...payload, userId });
@@ -37,7 +37,7 @@ const getMyProfile = async (userId: string) => {
     .populate('userId', 'name email');
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
   }
 
   return profile;
@@ -54,7 +54,7 @@ const getProfileById = async (profileId: string, active: boolean = true) => {
   }).populate('userId', 'name email');
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
   }
 
   return profile;
@@ -87,7 +87,7 @@ const updateSeekerProfile = async (
   );
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
   }
 
   return profile;
@@ -105,7 +105,7 @@ const deleteSeekerProfile = async (userId: string) => {
   );
 
   if (!profile) {
-    throw new AppError(httpStatus.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, SEEKER_PROFILE_NOT_FOUND);
   }
 
   return profile;

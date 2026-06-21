@@ -73,8 +73,6 @@ const updateExperience = async (
   return updated;
 };
 
-
-
 const deleteExperience = async (
   experienceId: string,
   userId: string,

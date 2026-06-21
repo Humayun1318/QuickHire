@@ -10,7 +10,7 @@ const router = Router();
 
 // Create profile — seeker only (one per user, enforced in service)
 router.post(
-    '/',
+    '/create',
     checkAuth(UserRole.SEEKER),
     validateRequest(seekerProfileValidation.createSeekerProfileSchema),
     seekerProfileController.createSeekerProfile,
@@ -32,7 +32,7 @@ router.get(
 
 // Update own profile — seeker only
 router.patch(
-    '/me',
+    '/update',
     checkAuth(UserRole.SEEKER),
     validateRequest(seekerProfileValidation.updateSeekerProfileSchema),
     seekerProfileController.updateSeekerProfile,
