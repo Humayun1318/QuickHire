@@ -5,9 +5,15 @@ import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from '../user/user.interface';
 import passport from 'passport';
-import { envVars } from '../../config/env';
+import { createUserZodSchema } from '../user/user.validation';
 
 const router = Router();
+
+router.post(
+  '/register',
+  validateRequest(createUserZodSchema),
+  authController.createUser,
+);
 
 // Authentication routes________________________________
 router.post(
@@ -15,6 +21,7 @@ router.post(
   validateRequest(authValidation.loginSchema),
   authController.createAuth,
 );
+
 router.post(
   '/refresh-token',
   authController.getNewAccessTokenUsingRefreshToken,

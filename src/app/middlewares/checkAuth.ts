@@ -18,7 +18,7 @@ export const checkAuth =
        * Expected format: "Bearer <token>"
        * The token should be the JWT access token generated during login
        */
-      const accessToken = req.headers.authorization;
+      const accessToken = req.headers.authorization || req.cookies?.accessToken;
 
       // Validate token presence
       if (!accessToken) {

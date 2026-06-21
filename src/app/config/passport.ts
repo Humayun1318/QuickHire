@@ -129,7 +129,7 @@ passport.use(
           });
         }
 
-        if (state && state?.role && !Object.values(UserRole).includes(state.role)) {
+        if (state && state?.role && ![UserRole.SEEKER, UserRole.EMPLOYER].includes(state.role)) {
            return done("Invalid role");
         }
 
@@ -142,11 +142,11 @@ passport.use(
         // ─────────────────────────────
         if (user) {
           //  not verified user
-          if (!user.isVerified) {
-            return done(null, false, {
-              message: 'User is not verified',
-            });
-          }
+          // if (!user.isVerified) {
+          //   return done(null, false, {
+          //     message: 'User is not verified',
+          //   });
+          // }
 
           //  inactive / blocked via model method
           if (!user.isAccountActive()) {
@@ -154,13 +154,6 @@ passport.use(
               message: `User is ${user.status}`,
             });
           }
-
-          // soft deleted (if you have this field in model)
-          // if (user.isDeleted) {
-          //   return done(null, false, {
-          //     message: 'User is deleted',
-          //   });
-          // }
 
           // link google auth if not exists
           if (!user.hasAuthProvider(AuthProvider.GOOGLE)) {
@@ -186,7 +179,7 @@ passport.use(
           avatar: profile.photos?.[0]?.value,
           role,
           status: AccountStatus.ACTIVE,
-          isVerified: true,
+          // isVerified: true,
           auths: [
             {
               provider: AuthProvider.GOOGLE,
@@ -204,7 +197,6 @@ passport.use(
     },
   ),
 );
-
 
 passport.serializeUser((user: any, done: (err: any, id?: unknown) => void) => {
   done(null, user._id)

@@ -9,11 +9,6 @@ import { UserRole } from './user.interface';
 // Initialize Express router for user routes
 const router = Router();
 
-router.post(
-  '/register',
-  validateRequest(createUserZodSchema),
-  userController.createUser,
-);
 
 router.patch('/update/:id', userController.updateUser);
 router.delete('/delete/:id', userController.deleteUser);

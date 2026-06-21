@@ -4,17 +4,7 @@ import { userService } from './user.service';
 import { sendResponse } from '../../utils/sendResponse';
 import httpStatus from 'http-status-codes';
 
-const createUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await userService.createUser(req.body);
 
-  // Send success response to client with created user data
-  sendResponse(res, {
-    statusCode: httpStatus.CREATED,
-    success: true,
-    message: 'User created successfully',
-    data: result,
-  });
-});
 
 const getAllUser = catchAsync(async (req: Request, res: Response) => {
   // Call service layer to fetch all users from database
@@ -50,7 +40,6 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const userController = {
-  createUser,
   getAllUser,
   getUserById,
   updateUser,

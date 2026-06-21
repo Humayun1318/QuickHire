@@ -174,13 +174,6 @@ seekerProfileSchema.index({ userId: 1 });
 // Required for "jobs near me" or "seekers near location" features
 seekerProfileSchema.index({ 'address.location': '2dsphere' });
 
-// Composite index for employer search: skill + availability + jobPreference
-// Covers the most common employer search pattern
-// seekerProfileSchema.index({
-//     skills: 1,
-//     availabilityStatus: 1,
-//     jobPreference: 1,
-// });
 
 // ─────────────────────────────────────────────────────────────
 // Instance Methods

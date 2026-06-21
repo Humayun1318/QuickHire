@@ -88,7 +88,8 @@ export const createUserZodSchema = z
       })
       .min(10, 'Phone must be at least 10 digits')
       .max(15, 'Phone number too long')
-      .optional(),
+      .optional()
+      .nullable(),
 
     avatar: z
       .string({

@@ -117,19 +117,19 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     seekerProfileId: {
       type:    Schema.Types.ObjectId,
       ref:     'SeekerProfile',
-      default: null,
+      default: undefined,
     },
 
     companyId: {
       type:    Schema.Types.ObjectId,
       ref:     'Company',
-      default: null,
+      default: undefined,
     },
 
     subscriptionId: {
       type:    Schema.Types.ObjectId,
       ref:     'Subscription',
-      default: null,
+      default: undefined,
     },
   },
   {

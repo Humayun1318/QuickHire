@@ -4,42 +4,84 @@ import {
   createUserTokens,
 } from '../../utils/userTokens';
 import { validateUserStatus } from '../../utils/validateUserStatus';
-import { IUser } from '../user/user.interface';
+import { AuthProvider, IUser } from '../user/user.interface';
 import { User } from '../user/user.models';
 import httpStatus from 'http-status-codes';
 import { JwtPayload } from 'jsonwebtoken';
 
-const createAuth = async (payload: Partial<IUser>) => {
-  const { email, password } = payload;
-  if (!email || !password) {
+const createUser = async (payload: IUser) => {
+  const { email } = payload;
+
+  // check if user already exists giving me with password field
+  const existingUser = await User.findByEmail(email);
+
+  if (existingUser) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'Email and password are required',
+      httpStatus.CONFLICT,
+      'User already exists with this email',
     );
   }
 
-  const existingUser = await User.findByEmail(email!);
-  if (!existingUser) {
-    throw new AppError(httpStatus.NOT_FOUND, 'No user found with this email');
+  // Normalize auths: set providerId to email
+  payload.auths = payload?.auths?.map(() => ({
+    provider: AuthProvider.LOCAL,
+    providerId: email,
+  })) || [
+    {
+      provider: AuthProvider.LOCAL,
+      providerId: email,
+    },
+  ];
+
+  // //check if CREDENTIALS provider exists
+  const hasCredentialsProvider = payload.auths.some(
+    (auth) => auth.provider === AuthProvider.LOCAL,
+  );
+
+  // local provider must have password
+  if (hasCredentialsProvider && !payload.password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Password is required for credentials authentication',
+    );
   }
 
-  // Validate user status (verified, active, blocked, deleted)
-  validateUserStatus(existingUser);
-
-  const isPasswordValid = await existingUser.comparePassword(password!);
-  if (!isPasswordValid) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid credentials');
-  }
-
-  // Generate JWT token
-  const userTokens = createUserTokens(existingUser);
-
-  return {
-    accessToken: userTokens.accessToken,
-    refreshToken: userTokens.refreshToken,
-    user: existingUser,
-  };
+  // create user
+  const user = await User.create(payload);
+  return user;
 };
+
+// const createAuth = async (payload: Partial<IUser>) => {
+//   const { email, password } = payload;
+//   if (!email || !password) {
+//     throw new AppError(
+//       httpStatus.BAD_REQUEST,
+//       'Email and password are required',
+//     );
+//   }
+
+//   const existingUser = await User.findByEmail(email!);
+//   if (!existingUser) {
+//     throw new AppError(httpStatus.NOT_FOUND, 'No user found with this email');
+//   }
+
+//   // Validate user status (verified, active, blocked, deleted)
+//   validateUserStatus(existingUser);
+
+//   const isPasswordValid = await existingUser.comparePassword(password!);
+//   if (!isPasswordValid) {
+//     throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid credentials');
+//   }
+
+//   // Generate JWT token
+//   const userTokens = createUserTokens(existingUser);
+
+//   return {
+//     accessToken: userTokens.accessToken,
+//     refreshToken: userTokens.refreshToken,
+//     user: existingUser,
+//   };
+// };
 
 const getNewAccessTokenUsingRefreshToken = async (refreshToken: string) => {
   if (!refreshToken) {
@@ -87,7 +129,8 @@ const updateAuth = async () => {};
 const deleteAuth = async () => {};
 
 export const authService = {
-  createAuth,
+  createUser,
+  // createAuth,
   getNewAccessTokenUsingRefreshToken,
   changePassword,
   getAllAuth,

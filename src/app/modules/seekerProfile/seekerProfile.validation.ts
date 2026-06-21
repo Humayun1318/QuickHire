@@ -1,6 +1,3 @@
-// Zod schemas validate incoming request bodies at the route boundary,
-// before they reach the service layer. This keeps services clean.
-
 import { z } from 'zod';
 import {
     AvailabilityStatus,
@@ -61,7 +58,7 @@ const createSeekerProfileSchema = z.object({
         .optional(),
     address: addressSchema.optional(),
     skills: z.array(z.string().trim()).default([]),
-    languages: z.array(z.string().trim()).optional(),
+    languages: z.array(z.string().trim()).default([]),
     expectedSalary: expectedSalarySchema.optional(),
     jobPreference: z.enum(JobPreferenceType).optional(),
     availabilityStatus: z
@@ -80,7 +77,7 @@ const updateSeekerProfileSchema = z
         bio: z.string().trim().max(1000).optional(),
         address: addressSchema.optional(),
         skills: z.array(z.string().trim()).optional(),
-        languages: z.array(z.string().trim()).optional(),
+        languages: z.array(z.string().trim()).default([]),
         expectedSalary: expectedSalarySchema.optional(),
         jobPreference: z.enum(JobPreferenceType).optional(),
         availabilityStatus: z.enum(AvailabilityStatus).optional(),

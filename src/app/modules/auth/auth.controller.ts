@@ -11,6 +11,18 @@ import AppError from '../../errorHelpers/AppError';
 import { createUserTokens } from '../../utils/userTokens';
 import { validateUserStatus } from '../../utils/validateUserStatus';
 
+const createUser = catchAsync(async (req: Request, res: Response) => {
+  const result = await authService.createUser(req.body);
+
+  // Send success response to client with created user data
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: 'User created successfully',
+    data: result,
+  });
+});
+
 const credentialsLogin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
 
@@ -175,6 +187,7 @@ const updateAuth = catchAsync(async (req: Request, res: Response) => { });
 const deleteAuth = catchAsync(async (req: Request, res: Response) => { });
 
 export const authController = {
+  createUser,
   createAuth: credentialsLogin,
   getNewAccessTokenUsingRefreshToken,
   logout,
