@@ -1,42 +1,15 @@
-
-// Keeping interfaces separate from the model allows reuse in services,
-// controllers, and DTOs without importing Mongoose Document types.
-
 import { Document, Model, Types } from 'mongoose';
 import {
   AvailabilityStatus,
   JobPreferenceType,
   SalaryCurrency,
 } from './seekerProfile.constants';
+import { IAddress } from '../../shared/interfaces/address.types';
+import { ISocialLinks } from '../../shared/interfaces/socialLinks.types';
 
 // ─────────────────────────────────────────────────────────────
 // Sub-document interfaces
 // ─────────────────────────────────────────────────────────────
-
-// GeoJSON Point — required for MongoDB 2dsphere index
-// coordinates: [longitude, latitude] — GeoJSON standard order
-export interface IGeoPoint {
-  type: 'Point';
-  coordinates: [number, number]; // [lng, lat]
-}
-
-// Embedded address object — structured for geo queries and readability
-export interface IAddress {
-  city?: string;
-  state?: string;
-  country?: string;
-  postalCode?: string;
-  // GeoJSON format required by MongoDB's $near and $geoWithin operators
-  location?: IGeoPoint;
-}
-
-// Social/professional links for public profile display
-export interface ISocialLinks {
-  linkedin?: string;
-  github?: string;
-  portfolio?: string;
-  twitter?: string;
-}
 
 // Expected salary with currency — structured for range-based filtering
 export interface IExpectedSalary {

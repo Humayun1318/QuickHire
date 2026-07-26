@@ -13,6 +13,8 @@ import { authRoutes } from '../modules/auth/auth.route';
 import { seekerExperienceRoutes } from '../modules/seekerExperience/seekerExperience.route';
 import { seekerEducationRoutes } from '../modules/seekerEducation/seekerEducation.route';
 import { seekerProfileRoutes } from '../modules/seekerProfile/seekerProfile.route';
+import { companyRoutes } from '../modules/company/company.route';
+import { companyMemberRoutes } from '../modules/companyMember/companyMember.route';
 
 // Initialize Express router for API routes
 export const router = Router();
@@ -57,6 +59,14 @@ const moduleRoutes = [
   {
     path: '/seeker-experiences',
     route: seekerExperienceRoutes
+  },
+  {
+    path: '/companies',
+    route: companyRoutes
+  },
+  {
+    path: '/companies/:slug/members',
+    route: companyMemberRoutes
   },
 ];
 

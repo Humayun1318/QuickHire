@@ -4,36 +4,12 @@ import {
     JobPreferenceType,
     SalaryCurrency,
 } from './seekerProfile.constants';
+import { addressSchemaValidation } from '../../shared/validation/address.validation';
+import { socialLinksSchemaValidation } from '../../shared/validation/socialLinks.validation';
 
 // ─────────────────────────────────────────────────────────────
 // Reusable sub-schemas
 // ─────────────────────────────────────────────────────────────
-
-const addressSchema = z.object({
-    city: z.string().trim(),
-    state: z.string().trim().optional(),
-    country: z.string().trim(),
-    postalCode: z.string().trim().optional(),
-    location: z
-        .object({
-            type: z.literal('Point').default('Point'),
-            // [longitude, latitude] — validate range for real coordinates
-            coordinates: z
-                .tuple([
-                    z.number().min(-180).max(180), // longitude
-                    z.number().min(-90).max(90),   // latitude
-                ])
-                .optional(),
-        })
-        .optional(),
-}).nullable();
-
-const socialLinksSchema = z.object({
-    linkedin: z.url({ error: "Invalid LinkedIn URL" }).optional(),
-    github: z.url({ error: "Invalid GitHub URL" }).optional(),
-    portfolio: z.url({ error: "Invalid portfolio URL" }).optional(),
-    twitter: z.url({ error: "Invalid Twitter URL" }).optional(),
-}).nullable();
 
 const expectedSalarySchema = z.object({
     amount: z.number().nonnegative('Salary cannot be negative'),
@@ -56,7 +32,7 @@ const createSeekerProfileSchema = z.object({
         .trim()
         .max(1000, 'Bio cannot exceed 1000 characters')
         .optional(),
-    address: addressSchema.optional(),
+    address: addressSchemaValidation.optional(),
     skills: z.array(z.string().trim()).default([]),
     languages: z.array(z.string().trim()).default([]),
     expectedSalary: expectedSalarySchema.optional(),
@@ -64,7 +40,7 @@ const createSeekerProfileSchema = z.object({
     availabilityStatus: z
         .enum(AvailabilityStatus)
         .default(AvailabilityStatus.OPEN),
-    socialLinks: socialLinksSchema.optional(),
+    socialLinks: socialLinksSchemaValidation.optional(),
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -75,13 +51,13 @@ const updateSeekerProfileSchema = z
     .object({
         headline: z.string().trim().max(120).optional(),
         bio: z.string().trim().max(1000).optional(),
-        address: addressSchema.optional(),
+        address: addressSchemaValidation.optional(),
         skills: z.array(z.string().trim()).optional(),
         languages: z.array(z.string().trim()).default([]),
         expectedSalary: expectedSalarySchema.optional(),
         jobPreference: z.enum(JobPreferenceType).optional(),
         availabilityStatus: z.enum(AvailabilityStatus).optional(),
-        socialLinks: socialLinksSchema.optional(),
+        socialLinks: socialLinksSchemaValidation.optional(),
     })
     .partial()
 

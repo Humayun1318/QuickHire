@@ -1,8 +1,3 @@
-/**
- * @file app.ts
- * @description Express application configuration and middleware setup
- * This file configures all middlewares, authentication strategies, and routes
- */
 
 // Import and initialize Passport authentication strategies (Google OAuth, Local)
 import './app/config/passport';

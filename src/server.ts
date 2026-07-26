@@ -1,8 +1,3 @@
-/**
- * @file server.ts
- * @description Entry point for the QuickHire backend application
- * This file handles server initialization, database connection, and graceful shutdown
- */
 
 import { Server } from 'http';
 import { envVars } from './app/config/env';
