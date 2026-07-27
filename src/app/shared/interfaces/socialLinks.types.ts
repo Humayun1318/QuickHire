@@ -1,5 +1,4 @@
 
-
 // Social/professional links for public profile display
 export interface ISocialLinks {
     linkedin?: string;
