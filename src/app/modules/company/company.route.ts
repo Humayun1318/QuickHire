@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { validateRequest } from '../../middlewares/validateRequest';
@@ -10,46 +9,39 @@ const router = Router();
 
 // Create — employer only, one company per employer enforced in service
 router.post(
-    '/',
-    checkAuth(UserRole.EMPLOYER),
-    validateRequest(companyValidation.createCompanySchema),
-    companyController.createCompany,
+  '/',
+  checkAuth(UserRole.EMPLOYER),
+  validateRequest(companyValidation.createCompanySchema),
+  companyController.createCompany,
 );
 
 // Get own company — employer only
-router.get(
-    '/me',
-    checkAuth(UserRole.EMPLOYER),
-    companyController.getMyCompany,
-);
+router.get('/me', checkAuth(UserRole.EMPLOYER), companyController.getMyCompany);
 
 // Get by slug — public (seekers browsing companies)
-router.get(
-    '/',
-    companyController.getSingleCompany,
-);
+router.get('/', companyController.getSingleCompany);
 
 // Update own company — employer only
 router.patch(
-    '/:companyId',
-    checkAuth(UserRole.EMPLOYER),
-    validateRequest(companyValidation.updateCompanySchema),
-    companyController.updateCompany,
+  '/:companyId',
+  checkAuth(UserRole.EMPLOYER),
+  validateRequest(companyValidation.updateCompanySchema),
+  companyController.updateCompany,
 );
 
 // Soft delete — employer only
 router.delete(
-    '/:companyId',
-    checkAuth(UserRole.EMPLOYER),
-    companyController.deleteCompany,
+  '/:companyId',
+  checkAuth(UserRole.EMPLOYER),
+  companyController.deleteCompany,
 );
 
 // Admin: update verification status
 router.patch(
-    '/:companyId/verification',
-    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequest(companyValidation.updateVerificationSchema),
-    companyController.updateVerificationStatus,
+  '/:companyId/verification',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequest(companyValidation.updateVerificationSchema),
+  companyController.updateVerificationStatus,
 );
 
 export const companyRoutes = router;

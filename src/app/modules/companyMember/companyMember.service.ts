@@ -15,14 +15,21 @@ import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import { UserRole } from '../user/user.interface';
 import { ICompanyDocument } from '../company/company.interface';
+import { requireCompanyRole } from '../company/company.authorization';
+import {
+  validateMemberRemovalPermission,
+  validateRoleAssignPermission,
+  validateRoleUpdatePermission,
+} from './companyMember.utils';
+import { Types } from 'mongoose';
+import { CompanyMemberStatus } from './companyMember.interface';
 
 // ─────────────────────────────────────────────────────────────
 // Add member — owner or admin can add members
 // ─────────────────────────────────────────────────────────────
-
 const addMember = async (
   companyId: string,
-  requesterId: string, // the person doing the adding
+  requesterId: string,
   targetUserId: string,
   role: CompanyMemberRole,
 ) => {
@@ -32,22 +39,30 @@ const addMember = async (
     throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
   }
 
-  // Verify requester has permission (must be OWNER or ADMIN of this company)
-  const requester = await CompanyMember.getMemberWithRole(companyId, requesterId);
-  const canManage = [CompanyMemberRole.OWNER, CompanyMemberRole.ADMIN];
-  if (!requester || !canManage.includes(requester.role)) {
+  // Verify requester permission
+  const requester = await requireCompanyRole(companyId, requesterId, [
+    CompanyMemberRole.OWNER,
+    CompanyMemberRole.ADMIN,
+  ]);
+
+  // Prevent self-add
+  if (requesterId === targetUserId) {
     throw new AppError(
-      HTTP_STATUS_CODE.FORBIDDEN,
-      'Only company OWNER or ADMIN can add members',
+      HTTP_STATUS_CODE.BAD_REQUEST,
+      'You cannot add yourself as a company member',
     );
   }
 
-  // Verify the target user exists and has employer role
-  // Only employer-role users can be company members — seekers cannot
+  // Role hierarchy validation
+  validateRoleAssignPermission(requester.role, role);
+
+  // Verify target user exists
   const targetUser = await User.findById(targetUserId);
   if (!targetUser) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
+
+  // Only employers can be company members
   if (targetUser.role !== UserRole.EMPLOYER) {
     throw new AppError(
       HTTP_STATUS_CODE.BAD_REQUEST,
@@ -56,9 +71,31 @@ const addMember = async (
   }
 
   // Prevent duplicate membership
-  const alreadyMember = await CompanyMember.isMemberExists(companyId, targetUserId);
-  if (alreadyMember) {
+  // Check existing membership (active or inactive)
+  const existingMember = await CompanyMember.findOne({
+    companyId,
+    userId: targetUserId,
+  });
+
+  // Already an active member
+  if (existingMember?.isActive) {
     throw new AppError(httpStatus.CONFLICT, MEMBER_ALREADY_EXISTS);
+  }
+
+  // Reactivate previous member
+  if (existingMember && !existingMember.isActive) {
+    existingMember.isActive = true;
+    existingMember.status = CompanyMemberStatus.ACTIVE; // Reset status to active
+    existingMember.role = role;
+    existingMember.invitedBy = new Types.ObjectId(requesterId);
+    existingMember.joinedAt = new Date();
+
+    await existingMember.save();
+
+    return existingMember.populate([
+      { path: 'userId', select: 'name email avatar' },
+      { path: 'invitedBy', select: 'name email' },
+    ]);
   }
 
   const member = await CompanyMember.create({
@@ -73,18 +110,21 @@ const addMember = async (
     { path: 'invitedBy', select: 'name email' },
   ]);
 };
-
 // ─────────────────────────────────────────────────────────────
 // Get all members of a company
 // ─────────────────────────────────────────────────────────────
-
-const getCompanyMembers = async (companyIdentifier: { companyId?: string; slug?: string }) => {
-
+const getCompanyMembers = async (companyIdentifier: {
+  companyId?: string;
+  slug?: string;
+}) => {
   let company: ICompanyDocument | null = null;
   if (companyIdentifier.companyId) {
     company = await Company.isCompanyExists(companyIdentifier.companyId);
   } else {
-    company = await Company.findOne({ slug: companyIdentifier.slug, isActive: true });
+    company = await Company.findOne({
+      slug: companyIdentifier.slug,
+      isActive: true,
+    });
   }
   if (!company) {
     throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
@@ -100,94 +140,124 @@ const getCompanyMembers = async (companyIdentifier: { companyId?: string; slug?:
 // Update member role — OWNER and ADMIN can change roles
 // Cannot change the OWNER's role — ownership transfer is separate
 // ─────────────────────────────────────────────────────────────
-
 const updateMemberRole = async (
   companyId: string,
   requesterId: string,
-  memberId: string, // the _id of the companyMember document
+  memberId: string,
   newRole: CompanyMemberRole,
 ) => {
-  // Find the target member record
+  // Verify company exists
+  const company = await Company.isCompanyExists(companyId);
+  if (!company) {
+    throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
+  }
+
+  // Verify requester permission
+  const requester = await requireCompanyRole(companyId, requesterId, [
+    CompanyMemberRole.OWNER,
+    CompanyMemberRole.ADMIN,
+  ]);
+
+  // Find target member
   const targetMember = await CompanyMember.findOne({
     _id: memberId,
     companyId,
     isActive: true,
   });
+
   if (!targetMember) {
     throw new AppError(httpStatus.NOT_FOUND, MEMBER_NOT_FOUND);
   }
 
-  // Guard: owner's role is immutable
-  if (targetMember.role === CompanyMemberRole.OWNER) {
-    throw new AppError(httpStatus.FORBIDDEN, CANNOT_CHANGE_OWNER_ROLE);
-  }
-
-  // Guard: only OWNER or ADMIN can change roles
-  const requester = await CompanyMember.getMemberWithRole(companyId, requesterId);
-  const canManage = [CompanyMemberRole.OWNER, CompanyMemberRole.ADMIN];
-  if (!requester || !canManage.includes(requester.role)) {
+  // Prevent updating own role
+  if (targetMember.userId.toString() === requesterId) {
     throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only company OWNER or ADMIN can update member roles',
+      HTTP_STATUS_CODE.BAD_REQUEST,
+      'You cannot change your own role',
     );
   }
 
+  // Role hierarchy validation
+  validateRoleUpdatePermission(requester.role, targetMember.role, newRole);
+
   const updated = await CompanyMember.findByIdAndUpdate(
     memberId,
-    { $set: { role: newRole } },
-    { new: true },
+    {
+      $set: {
+        role: newRole,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
   ).populate('userId', 'name email avatar');
 
   return updated;
 };
-
 // ─────────────────────────────────────────────────────────────
 // Remove member — soft delete, preserves history
 // ─────────────────────────────────────────────────────────────
-
 const removeMember = async (
   companyId: string,
   requesterId: string,
   memberId: string,
 ) => {
+  // Company exists
+  const company = await Company.isCompanyExists(companyId);
+
+  if (!company) {
+    throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
+  }
+
+  // Requester permission
+  const requester = await requireCompanyRole(companyId, requesterId, [
+    CompanyMemberRole.OWNER,
+    CompanyMemberRole.ADMIN,
+  ]);
+
+  // Target member
   const targetMember = await CompanyMember.findOne({
     _id: memberId,
     companyId,
     isActive: true,
   });
+
   if (!targetMember) {
     throw new AppError(httpStatus.NOT_FOUND, MEMBER_NOT_FOUND);
   }
 
-  // OWNER cannot be removed — company must be deleted or ownership transferred
-  if (targetMember.role === CompanyMemberRole.OWNER) {
-    throw new AppError(httpStatus.FORBIDDEN, CANNOT_REMOVE_OWNER);
-  }
-
-  // Only OWNER or ADMIN can remove members
-  const requester = await CompanyMember.getMemberWithRole(companyId, requesterId);
-  const canManage = [CompanyMemberRole.OWNER, CompanyMemberRole.ADMIN];
-  if (!requester || !canManage.includes(requester.role)) {
+  // Cannot remove yourself
+  if (targetMember.userId.toString() === requesterId) {
     throw new AppError(
-      httpStatus.FORBIDDEN,
-      'Only company OWNER or ADMIN can remove members',
+      httpStatus.BAD_REQUEST,
+      'You cannot remove yourself. Use the leave company option instead.',
     );
   }
 
+  // Reuse hierarchy helper
+  validateMemberRemovalPermission(requester.role, targetMember.role);
+
   await CompanyMember.findByIdAndUpdate(memberId, {
-    $set: { isActive: false },
+    $set: {
+      isActive: false,
+      status: CompanyMemberStatus.REMOVED,
+    },
   });
 
-  return { message: 'Member removed successfully' };
+  return {
+    message: 'Member removed successfully',
+  };
 };
 
 // ─────────────────────────────────────────────────────────────
 // Leave company — member removes themselves
-// Owner cannot leave — they must delete the company or transfer ownership
+// Owner cannot leave — they must delete the company
 // ─────────────────────────────────────────────────────────────
 
 const leaveCompany = async (companyId: string, userId: string) => {
   const member = await CompanyMember.getMemberWithRole(companyId, userId);
+
   if (!member) {
     throw new AppError(httpStatus.NOT_FOUND, MEMBER_NOT_FOUND);
   }
@@ -197,10 +267,15 @@ const leaveCompany = async (companyId: string, userId: string) => {
   }
 
   await CompanyMember.findByIdAndUpdate(member._id, {
-    $set: { isActive: false },
+    $set: {
+      isActive: false,
+      status: CompanyMemberStatus.LEFT,
+    },
   });
 
-  return { message: 'You have left the company' };
+  return {
+    message: 'You have left the company successfully',
+  };
 };
 
 export const companyMemberService = {

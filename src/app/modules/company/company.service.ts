@@ -1,4 +1,3 @@
-
 import {
   COMPANY_ALREADY_EXISTS,
   COMPANY_NOT_FOUND,
@@ -13,16 +12,11 @@ import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import mongoose from 'mongoose';
 import { requireCompanyRole } from './company.authorization';
 
-
 // ─────────────────────────────────────────────────────────────
 // Create — one company per employer
 // Atomically creates company + OWNER member record in the same operation
 // ─────────────────────────────────────────────────────────────
-const createCompany = async (
-  ownerId: string,
-  payload: Partial<ICompany>,
-) => {
-
+const createCompany = async (ownerId: string, payload: Partial<ICompany>) => {
   const session = await mongoose.startSession();
 
   try {
@@ -35,10 +29,9 @@ const createCompany = async (
     }
 
     // Create the company
-    const [company] = await Company.create(
-      [{ ...payload, ownerId }],
-      { session },
-    );
+    const [company] = await Company.create([{ ...payload, ownerId }], {
+      session,
+    });
 
     // Immediately create the OWNER member record so every company
     // has at least one member from the start.
@@ -57,7 +50,6 @@ const createCompany = async (
 
     await session.commitTransaction();
     return company;
-
   } catch (err) {
     await session.abortTransaction();
     throw err;
@@ -70,8 +62,10 @@ const createCompany = async (
 // Get own company — employer fetching their own company
 // ─────────────────────────────────────────────────────────────
 const getMyCompany = async (ownerId: string) => {
-  const company = await Company.findOne({ ownerId, isActive: true })
-    .populate('ownerId', 'name email avatar');
+  const company = await Company.findOne({ ownerId, isActive: true }).populate(
+    'ownerId',
+    'name email avatar',
+  );
 
   if (!company) {
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
@@ -83,14 +77,18 @@ const getMyCompany = async (ownerId: string) => {
 // ─────────────────────────────────────────────────────────────
 // Get public company profile — for job seekers browsing companies
 // Get by slug — used for public company page URLs (/companies/techcorp-ltd)
-const getSingleCompany = async (companyIdentifier: { companyId?: string; slug?: string }) => {
+const getSingleCompany = async (companyIdentifier: {
+  companyId?: string;
+  slug?: string;
+}) => {
   const { companyId, slug } = companyIdentifier;
   let company: ICompanyDocument | null = null;
   if (companyId) {
     company = await Company.findOne({ _id: companyId, isActive: true });
   } else if (slug) {
     company = await Company.findOne({
-      slug, isActive: true
+      slug,
+      isActive: true,
     });
   }
 
@@ -99,7 +97,10 @@ const getSingleCompany = async (companyIdentifier: { companyId?: string; slug?: 
   }
 
   if (company.verificationStatus !== CompanyVerificationStatus.VERIFIED) {
-    throw new AppError(HTTP_STATUS_CODE.FORBIDDEN, 'This company is not verified yet');
+    throw new AppError(
+      HTTP_STATUS_CODE.FORBIDDEN,
+      'This company is not verified yet',
+    );
   }
 
   return company;
@@ -114,21 +115,14 @@ const updateCompany = async (
   payload: Partial<ICompany>,
 ) => {
   // Check whether the user belongs to this company
-  const member = await requireCompanyRole(
-    companyId,
-    userId,
-    [
-      CompanyMemberRole.OWNER,
-      CompanyMemberRole.ADMIN,
-    ],
-  );
+  const member = await requireCompanyRole(companyId, userId, [
+    CompanyMemberRole.OWNER,
+    CompanyMemberRole.ADMIN,
+  ]);
 
   // OWNER -> can update everything
   // ADMIN -> everything except company name
-  if (
-    member.role === CompanyMemberRole.ADMIN &&
-    payload.name
-  ) {
+  if (member.role === CompanyMemberRole.ADMIN && payload.name) {
     throw new AppError(
       HTTP_STATUS_CODE.FORBIDDEN,
       'Admins cannot update company name',
@@ -147,10 +141,7 @@ const updateCompany = async (
   );
 
   if (!updated) {
-    throw new AppError(
-      HTTP_STATUS_CODE.NOT_FOUND,
-      COMPANY_NOT_FOUND,
-    );
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
   }
 
   return updated;

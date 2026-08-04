@@ -1,4 +1,3 @@
-
 import { Server } from 'http';
 import { envVars } from './app/config/env';
 import mongoose from 'mongoose';

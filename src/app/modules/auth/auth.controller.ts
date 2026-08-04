@@ -25,7 +25,6 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
 
 const credentialsLogin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-
     // -------------using passport to credentials login-----------------------
     passport.authenticate('local', async (err: any, user: any, info: any) => {
       if (err) {
@@ -120,71 +119,65 @@ const changePassword = catchAsync(
 
 const googleCallbackController = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate(
-      'google',
-      (err:any, user:any, info:any) => {
-        try {
-          // ERROR CASE
-          if (err) {
-            return res.redirect(
-              `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
-                err || 'Internal google strategy error',
-              )}`,
-            );
-          }
-
-          // AUTH FAILED CASE
-          if (!user) {
-            const message =
-              info?.message || 'Authentication failed';
-
-            return res.redirect(
-              `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
-                message,
-              )}`,
-            );
-          }
-
-          // SUCCESS CASE
-          req.user = user;
-
-          // ───── STATE HANDLING ─────
-          let redirectTo = '';
-
-          if (req.query.state && typeof req.query.state === 'string') {
-            try {
-              const parsed = JSON.parse(req.query.state);
-              if (parsed?.redirect) {
-                redirectTo = parsed.redirect;
-              }
-            } catch {
-              redirectTo = '';
-            }
-          }
-
-          if (redirectTo.startsWith('/')) {
-            redirectTo = redirectTo.slice(1);
-          }
-
-          // ───── TOKEN + COOKIE ─────
-          const tokenInfo = createUserTokens(user);
-          setAuthCookie(res, tokenInfo);
-
-          // ───── FINAL REDIRECT ─────
+    passport.authenticate('google', (err: any, user: any, info: any) => {
+      try {
+        // ERROR CASE
+        if (err) {
           return res.redirect(
-            `${envVars.FRONTEND_URL}/${redirectTo}`,
+            `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
+              err || 'Internal google strategy error',
+            )}`,
           );
-        } catch (error) {
-          next(error);
         }
-      },
-    )(req, res, next);
+
+        // AUTH FAILED CASE
+        if (!user) {
+          const message = info?.message || 'Authentication failed';
+
+          return res.redirect(
+            `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
+              message,
+            )}`,
+          );
+        }
+
+        // SUCCESS CASE
+        req.user = user;
+
+        // ───── STATE HANDLING ─────
+        let redirectTo = '';
+
+        if (req.query.state && typeof req.query.state === 'string') {
+          try {
+            const parsed = JSON.parse(req.query.state);
+            if (parsed?.redirect) {
+              redirectTo = parsed.redirect;
+            }
+          } catch {
+            redirectTo = '';
+          }
+        }
+
+        if (redirectTo.startsWith('/')) {
+          redirectTo = redirectTo.slice(1);
+        }
+
+        // ───── TOKEN + COOKIE ─────
+        const tokenInfo = createUserTokens(user);
+        setAuthCookie(res, tokenInfo);
+
+        // ───── FINAL REDIRECT ─────
+        return res.redirect(`${envVars.FRONTEND_URL}/${redirectTo}`);
+      } catch (error) {
+        next(error);
+      }
+    })(req, res, next);
   },
 );
-const getAllAuth = catchAsync(async (req: Request, res: Response) => { });
-const getAuthById = catchAsync(async (req: Request, res: Response) => { });
-const updateAuth = catchAsync(async (req: Request, res: Response) => { });
-const deleteAuth = catchAsync(async (req: Request, res: Response) => { });
+const getAllAuth = catchAsync(async (req: Request, res: Response) => {});
+const getAuthById = catchAsync(async (req: Request, res: Response) => {});
+const updateAuth = catchAsync(async (req: Request, res: Response) => {});
+const deleteAuth = catchAsync(async (req: Request, res: Response) => {});
 
 export const authController = {
   createUser,

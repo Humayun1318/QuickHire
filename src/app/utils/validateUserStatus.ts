@@ -1,5 +1,5 @@
-import AppError from "../errorHelpers/AppError";
-import { AccountStatus, IUser } from "../modules/user/user.interface";
+import AppError from '../errorHelpers/AppError';
+import { AccountStatus, IUser } from '../modules/user/user.interface';
 import httpStatus from 'http-status-codes';
 
 export const validateUserStatus = (user: IUser) => {

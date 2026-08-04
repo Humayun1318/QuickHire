@@ -1,4 +1,3 @@
-
 // Centralizing all enums and constants prevents magic strings scattered
 // across the codebase and makes refactoring safer.
 
@@ -16,8 +15,8 @@ export enum JobPreferenceType {
 
 // Availability status — shown to employers on search
 export enum AvailabilityStatus {
-  OPEN = 'open',               // actively looking
-  PASSIVE = 'passive',         // open to offers but not actively searching
+  OPEN = 'open', // actively looking
+  PASSIVE = 'passive', // open to offers but not actively searching
   NOT_LOOKING = 'not_looking', // employed and not interested
 }
 

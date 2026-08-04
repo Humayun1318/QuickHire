@@ -3,14 +3,11 @@ import { AuthProvider, IUser } from './user.interface';
 import { User } from './user.models';
 import httpStatus from 'http-status-codes';
 
-
-
 // Get all users (for admin)
 const getAllUser = async () => {
   const users = await User.find().lean();
   return users;
 };
-
 
 const getUserById = async (id: string) => {
   const user = await User.findById(id).lean();

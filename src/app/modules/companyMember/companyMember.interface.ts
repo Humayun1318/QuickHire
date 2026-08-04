@@ -1,16 +1,21 @@
-
-
 import { Document, Model, Types } from 'mongoose';
 import { CompanyMemberRole } from './companyMember.constants';
 
+export enum CompanyMemberStatus {
+  ACTIVE = 'ACTIVE',
+  LEFT = 'LEFT',
+  REMOVED = 'REMOVED',
+}
+
 export interface ICompanyMember {
-  companyId:  Types.ObjectId;      // FK → companies
-  userId:     Types.ObjectId;      // FK → users
-  role:       CompanyMemberRole;
+  companyId: Types.ObjectId; // FK → companies
+  userId: Types.ObjectId; // FK → users
+  role: CompanyMemberRole;
   // Invitation tracking — useful for audit and UX ("invited by Rahim")
-  invitedBy?: Types.ObjectId;      // FK → users (who added this member)
-  joinedAt:   Date;
-  isActive:   boolean;             // soft remove without losing history
+  invitedBy?: Types.ObjectId; // FK → users (who added this member)
+  joinedAt: Date;
+  isActive: boolean; // soft remove without losing history
+  status?: CompanyMemberStatus; // Status of the member
   createdAt?: Date;
   updatedAt?: Date;
 }

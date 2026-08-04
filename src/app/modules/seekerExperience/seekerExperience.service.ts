@@ -1,4 +1,3 @@
-
 import httpStatus from 'http-status-codes';
 import mongoose from 'mongoose';
 import {
@@ -11,7 +10,6 @@ import { SeekerExperience } from './seekerExperience.models';
 import { SeekerProfile } from '../seekerProfile/seekerProfile.models';
 import AppError from '../../errorHelpers/AppError';
 import { seekerProfileService } from '../seekerProfile/seekerProfile.service';
-
 
 const createExperience = async (
   userId: string,
@@ -38,8 +36,11 @@ const createExperience = async (
     // await SeekerProfile.findByIdAndUpdate(profile._id, {
     //   $inc: { profileCompleteness: EXPERIENCE_COMPLETENESS_POINTS },
     // });
-     
-    seekerProfileService.incrementCompleteness(userId, EXPERIENCE_COMPLETENESS_POINTS);
+
+    seekerProfileService.incrementCompleteness(
+      userId,
+      EXPERIENCE_COMPLETENESS_POINTS,
+    );
   }
 
   return experience;
@@ -73,10 +74,7 @@ const updateExperience = async (
   return updated;
 };
 
-const deleteExperience = async (
-  experienceId: string,
-  userId: string,
-) => {
+const deleteExperience = async (experienceId: string, userId: string) => {
   const session = await mongoose.startSession();
 
   try {
@@ -89,23 +87,18 @@ const deleteExperience = async (
     );
 
     if (!experience) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        EXPERIENCE_NOT_OWNED,
-      );
+      throw new AppError(httpStatus.FORBIDDEN, EXPERIENCE_NOT_OWNED);
     }
 
     // Delete experience
     await SeekerExperience.findByIdAndDelete(experienceId, {
       session,
     });
-    
+
     // Check if user still has any experience
-    const remainingExperience = await SeekerExperience.findOne(
-      {
-         userId: userId,
-      },
-    ).session(session);
+    const remainingExperience = await SeekerExperience.findOne({
+      userId: userId,
+    }).session(session);
 
     // If no experience left
     if (!remainingExperience) {

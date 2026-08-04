@@ -7,7 +7,11 @@ import {
 import { ICompanyDocument, ICompanyModel } from './company.interface';
 import { addressSchema } from '../../shared/schemas/address.schema';
 import { socialLinksSchema } from '../../shared/schemas/socialLinks.schema';
-import { generateSlug, generateUniqueSlug, normalizeName } from './company.utils';
+import {
+  generateSlug,
+  generateUniqueSlug,
+  normalizeName,
+} from './company.utils';
 
 // ─────────────────────────────────────────────────────────────
 // Main schema

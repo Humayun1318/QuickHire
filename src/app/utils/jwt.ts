@@ -1,4 +1,3 @@
-
 import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 
 export const generateToken = (
@@ -19,7 +18,10 @@ export const generateToken = (
   return token;
 };
 
-export const verifyToken = (token: string, jwtSecret: string): string | jwt.JwtPayload => {
+export const verifyToken = (
+  token: string,
+  jwtSecret: string,
+): string | jwt.JwtPayload => {
   /**
    * Verify token signature and expiration
    * Throws error if verification fails

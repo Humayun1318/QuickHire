@@ -50,23 +50,23 @@ const moduleRoutes = [
   },
   {
     path: '/seeker-profiles',
-    route: seekerProfileRoutes
+    route: seekerProfileRoutes,
   },
   {
     path: '/seeker-educations',
-    route: seekerEducationRoutes
+    route: seekerEducationRoutes,
   },
   {
     path: '/seeker-experiences',
-    route: seekerExperienceRoutes
+    route: seekerExperienceRoutes,
   },
   {
     path: '/companies',
-    route: companyRoutes
+    route: companyRoutes,
   },
   {
-    path: '/companies/:slug/members',
-    route: companyMemberRoutes
+    path: '/companies/members',
+    route: companyMemberRoutes,
   },
 ];
 

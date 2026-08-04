@@ -1,6 +1,4 @@
-import { Company } from "./company.models";
-
-
+import { Company } from './company.models';
 
 // for name normalization
 export const normalizeName = (name: string) => {

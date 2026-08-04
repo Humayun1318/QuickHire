@@ -1,4 +1,3 @@
-
 // Import and initialize Passport authentication strategies (Google OAuth, Local)
 import './app/config/passport';
 

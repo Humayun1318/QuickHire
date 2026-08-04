@@ -1,14 +1,13 @@
-
 import { Schema, model, Types } from 'mongoose';
 import {
-    AvailabilityStatus,
-    JobPreferenceType,
-    PROFILE_COMPLETENESS_WEIGHTS,
-    SalaryCurrency,
+  AvailabilityStatus,
+  JobPreferenceType,
+  PROFILE_COMPLETENESS_WEIGHTS,
+  SalaryCurrency,
 } from './seekerProfile.constants';
 import {
-    ISeekerProfileDocument,
-    ISeekerProfileModel,
+  ISeekerProfileDocument,
+  ISeekerProfileModel,
 } from './seekerProfile.interface';
 import { addressSchema } from '../../shared/schemas/address.schema';
 import { socialLinksSchema } from '../../shared/schemas/socialLinks.schema';
@@ -19,12 +18,16 @@ import { socialLinksSchema } from '../../shared/schemas/socialLinks.schema';
 
 // Expected salary — stored as structured object for currency-aware filtering
 const expectedSalarySchema = new Schema(
-    {
-        amount: { type: Number, min: 0 },
-        currency: { type: String, enum: Object.values(SalaryCurrency), default: SalaryCurrency.BDT },
-        isNegotiable: { type: Boolean, default: true },
+  {
+    amount: { type: Number, min: 0 },
+    currency: {
+      type: String,
+      enum: Object.values(SalaryCurrency),
+      default: SalaryCurrency.BDT,
     },
-    { _id: false, versionKey: false },
+    isNegotiable: { type: Boolean, default: true },
+  },
+  { _id: false, versionKey: false },
 );
 
 // ─────────────────────────────────────────────────────────────
@@ -32,96 +35,97 @@ const expectedSalarySchema = new Schema(
 // ─────────────────────────────────────────────────────────────
 
 const seekerProfileSchema = new Schema<
-    ISeekerProfileDocument,
-    ISeekerProfileModel
+  ISeekerProfileDocument,
+  ISeekerProfileModel
 >(
-    {
-        // FK reference — enforces 1:1 with users collection
-        userId: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: [true, 'User ID is required'],
-            unique: true, // ensures one profile per user
-        },
-
-        headline: {
-            type: String,
-            trim: true,
-            maxlength: [120, 'Headline cannot exceed 120 characters'],
-        },
-
-        bio: {
-            type: String,
-            trim: true,
-            maxlength: [1000, 'Bio cannot exceed 1000 characters'],
-        },
-
-        address: {
-            type: addressSchema,
-            default: null,
-        },
-
-        // Array of skill strings — indexed for search performance
-        skills: {
-            type: [String],
-            default: [],
-            // Normalize to lowercase for consistent filtering
-            set: (skills: string[] = []) => skills.map((s) => s.toLowerCase().trim()),
-        },
-
-        languages: {
-            type: [String],
-            default: [],
-            set: (languages: string[] = []) => languages.map((l) => l.toLowerCase().trim()),
-        },
-
-        expectedSalary: {
-            type: expectedSalarySchema,
-            default: null,
-        },
-
-        jobPreference: {
-            type: String,
-            enum: Object.values(JobPreferenceType),
-        },
-
-        availabilityStatus: {
-            type: String,
-            enum: Object.values(AvailabilityStatus),
-            default: AvailabilityStatus.OPEN,
-        },
-
-        socialLinks: {
-            type: socialLinksSchema,
-            default: null,
-        },
-
-        // Cached completeness score — recalculated on every save via pre-save hook
-        // Storing it avoids expensive recalculation on list queries
-        profileCompleteness: {
-            type: Number,
-            default: 0,
-            min: 0,
-            max: 100,
-        },
-
-        isActive: {
-            type: Boolean,
-            default: true,
-        },
+  {
+    // FK reference — enforces 1:1 with users collection
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required'],
+      unique: true, // ensures one profile per user
     },
-    {
-        timestamps: true,
-        // Exclude __v from all responses — it's an internal Mongoose version key
-        versionKey: false,
-        // toJSON: {
-        //     transform: (_doc, ret) => {
-        //         // Remove internal fields from API responses
-        //         delete ret.__v;
-        //         return ret;
-        //     },
-        // },
+
+    headline: {
+      type: String,
+      trim: true,
+      maxlength: [120, 'Headline cannot exceed 120 characters'],
     },
+
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Bio cannot exceed 1000 characters'],
+    },
+
+    address: {
+      type: addressSchema,
+      default: null,
+    },
+
+    // Array of skill strings — indexed for search performance
+    skills: {
+      type: [String],
+      default: [],
+      // Normalize to lowercase for consistent filtering
+      set: (skills: string[] = []) => skills.map((s) => s.toLowerCase().trim()),
+    },
+
+    languages: {
+      type: [String],
+      default: [],
+      set: (languages: string[] = []) =>
+        languages.map((l) => l.toLowerCase().trim()),
+    },
+
+    expectedSalary: {
+      type: expectedSalarySchema,
+      default: null,
+    },
+
+    jobPreference: {
+      type: String,
+      enum: Object.values(JobPreferenceType),
+    },
+
+    availabilityStatus: {
+      type: String,
+      enum: Object.values(AvailabilityStatus),
+      default: AvailabilityStatus.OPEN,
+    },
+
+    socialLinks: {
+      type: socialLinksSchema,
+      default: null,
+    },
+
+    // Cached completeness score — recalculated on every save via pre-save hook
+    // Storing it avoids expensive recalculation on list queries
+    profileCompleteness: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  {
+    timestamps: true,
+    // Exclude __v from all responses — it's an internal Mongoose version key
+    versionKey: false,
+    // toJSON: {
+    //     transform: (_doc, ret) => {
+    //         // Remove internal fields from API responses
+    //         delete ret.__v;
+    //         return ret;
+    //     },
+    // },
+  },
 );
 
 // ─────────────────────────────────────────────────────────────
@@ -135,7 +139,6 @@ seekerProfileSchema.index({ userId: 1 });
 // Required for "jobs near me" or "seekers near location" features
 seekerProfileSchema.index({ 'address.location': '2dsphere' });
 
-
 // ─────────────────────────────────────────────────────────────
 // Instance Methods
 // ─────────────────────────────────────────────────────────────
@@ -143,26 +146,27 @@ seekerProfileSchema.index({ 'address.location': '2dsphere' });
 // Calculates profile completeness score (0–100) based on filled fields.
 // Called in pre-save hook so the cached value is always current.
 seekerProfileSchema.methods.calculateCompleteness = function (): number {
-    let score = 0;
-    const weights = PROFILE_COMPLETENESS_WEIGHTS;
+  let score = 0;
+  const weights = PROFILE_COMPLETENESS_WEIGHTS;
 
-    if (this.headline) score += weights.headline;  //10
-    if (this.bio) score += weights.bio; //10
-    if (this.address?.city && this.address?.country) score += weights.address; //10
-    if (this.skills?.length) score += weights.skills; //15
-    if (this.expectedSalary) score += weights.expectedSalary; //5
-    if (this.jobPreference) score += weights.jobPreference; //5
-    if (this.availabilityStatus !== AvailabilityStatus.NOT_LOOKING)
-        score += weights.availabilityStatus; //5
-    if (
-        this.socialLinks?.linkedin ||
-        this.socialLinks?.github ||
-        this.socialLinks?.portfolio
-    ) score += weights.socialLinks; //10
+  if (this.headline) score += weights.headline; //10
+  if (this.bio) score += weights.bio; //10
+  if (this.address?.city && this.address?.country) score += weights.address; //10
+  if (this.skills?.length) score += weights.skills; //15
+  if (this.expectedSalary) score += weights.expectedSalary; //5
+  if (this.jobPreference) score += weights.jobPreference; //5
+  if (this.availabilityStatus !== AvailabilityStatus.NOT_LOOKING)
+    score += weights.availabilityStatus; //5
+  if (
+    this.socialLinks?.linkedin ||
+    this.socialLinks?.github ||
+    this.socialLinks?.portfolio
+  )
+    score += weights.socialLinks; //10
 
-    // Experience and education completeness is set externally via 
-    // seekerExperience and seekerEducation services after their creation
-    return Math.min(score, 100);
+  // Experience and education completeness is set externally via
+  // seekerExperience and seekerEducation services after their creation
+  return Math.min(score, 100);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -172,9 +176,9 @@ seekerProfileSchema.methods.calculateCompleteness = function (): number {
 // Checks whether a profile exists for a given userId.
 // Used in service layer to prevent duplicate profiles and validate operations.
 seekerProfileSchema.statics.isProfileExists = async function (
-    userId: string,
+  userId: string,
 ): Promise<ISeekerProfileDocument | null> {
-    return this.findOne({ userId, isActive: true });
+  return this.findOne({ userId, isActive: true });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -184,8 +188,8 @@ seekerProfileSchema.statics.isProfileExists = async function (
 // Pre-save: recalculate and cache profile completeness score
 // Runs on both create and update via save()
 seekerProfileSchema.pre('save', function (next) {
-    this.profileCompleteness = this.calculateCompleteness();
-    next();
+  this.profileCompleteness = this.calculateCompleteness();
+  next();
 });
 
 // Pre-findOneAndUpdate: recalculate completeness when updating via findOneAndUpdate
@@ -223,50 +227,50 @@ seekerProfileSchema.pre('save', function (next) {
 //     next();
 // });
 seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
-    const update = this.getUpdate() as Record<string, any>;
+  const update = this.getUpdate() as Record<string, any>;
 
-    // Skip recalculation when only incrementing/decrementing completeness
-    if (update['$inc']?.profileCompleteness !== undefined) {
-        return next();
-    }
+  // Skip recalculation when only incrementing/decrementing completeness
+  if (update['$inc']?.profileCompleteness !== undefined) {
+    return next();
+  }
 
-    // Get current document from DB
-    const doc = await this.model.findOne(this.getQuery());
+  // Get current document from DB
+  const doc = await this.model.findOne(this.getQuery());
 
-    if (!doc) {
-        return next();
-    }
+  if (!doc) {
+    return next();
+  }
 
-    // Merge existing data + incoming update
-    const mergedData = {
-        ...doc.toObject(),
-        ...(update.$set ?? update),
-    };
+  // Merge existing data + incoming update
+  const mergedData = {
+    ...doc.toObject(),
+    ...(update.$set ?? update),
+  };
 
-    // Create temporary mongoose document
-    const tempDoc = new this.model(mergedData);
+  // Create temporary mongoose document
+  const tempDoc = new this.model(mergedData);
 
-    // Preserve externally added completeness
-    const existingExtraCompleteness =
-        doc.profileCompleteness - doc.calculateCompleteness();
+  // Preserve externally added completeness
+  const existingExtraCompleteness =
+    doc.profileCompleteness - doc.calculateCompleteness();
 
-    // Recalculate
-    const recalculated =
-        tempDoc.calculateCompleteness() + existingExtraCompleteness;
+  // Recalculate
+  const recalculated =
+    tempDoc.calculateCompleteness() + existingExtraCompleteness;
 
-    // Inject updated completeness into update query
-    this.setUpdate({
-        ...update,
-        $set: {
-            ...(update.$set || {}),
-            profileCompleteness: Math.min(recalculated, 100),
-        },
-    });
+  // Inject updated completeness into update query
+  this.setUpdate({
+    ...update,
+    $set: {
+      ...(update.$set || {}),
+      profileCompleteness: Math.min(recalculated, 100),
+    },
+  });
 
-    next();
+  next();
 });
 
 export const SeekerProfile = model<ISeekerProfileDocument, ISeekerProfileModel>(
-    'SeekerProfile',
-    seekerProfileSchema,
+  'SeekerProfile',
+  seekerProfileSchema,
 );

@@ -5,12 +5,14 @@ A production-ready, scalable backend boilerplate using **TypeScript**, **Express
 ## 🚀 Features
 
 ### Core Technologies
+
 - 🛠️ **TypeScript** (with ESM support)
 - ⚡ **Express.js** server setup
 - � **MongoDB** integration via Mongoose
 - 🔐 **Environment variables** with `dotenv`
 
 ### Developer Experience
+
 - 🧹 **ESLint** (Flat Config) + **Prettier** setup
 - ♻️ **Live reload** using `ts-node-dev`
 - 🗂️ **Scalable folder structure**
@@ -19,6 +21,7 @@ A production-ready, scalable backend boilerplate using **TypeScript**, **Express
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
+
 - Node.js (v18+ recommended)
 - MongoDB (local or cloud instance)
 - Git
@@ -32,15 +35,15 @@ npm install
 
 ## 📜 Available Scripts
 
-| Command          | Description                              |
-|------------------|------------------------------------------|
-| `npm start`      | Runs the compiled JavaScript in production (from `dist/server.js`) |
-| `npm run build`  | Compiles TypeScript to JavaScript       |
-| `npm run dev`    | Runs development server with hot reload using ts-node-dev |
-| `npm test`       | Runs tests (currently shows error as no tests are configured) |
-| `npm run lint`   | Runs ESLint to check TypeScript files    |
-| `npm run lint:fix` | Runs ESLint and automatically fixes fixable issues |
-| `npm run format` | Runs Prettier to format all files        |
+| Command            | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `npm start`        | Runs the compiled JavaScript in production (from `dist/server.js`) |
+| `npm run build`    | Compiles TypeScript to JavaScript                                  |
+| `npm run dev`      | Runs development server with hot reload using ts-node-dev          |
+| `npm test`         | Runs tests (currently shows error as no tests are configured)      |
+| `npm run lint`     | Runs ESLint to check TypeScript files                              |
+| `npm run lint:fix` | Runs ESLint and automatically fixes fixable issues                 |
+| `npm run format`   | Runs Prettier to format all files                                  |
 
 ## 🔧 Tools & Configurations
 

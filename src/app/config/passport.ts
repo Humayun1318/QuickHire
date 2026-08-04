@@ -7,7 +7,11 @@ import {
 } from 'passport-google-oauth20';
 import { User } from '../modules/user/user.models';
 import { envVars } from './env';
-import { AccountStatus, AuthProvider, UserRole } from '../modules/user/user.interface';
+import {
+  AccountStatus,
+  AuthProvider,
+  UserRole,
+} from '../modules/user/user.interface';
 
 passport.use(
   new LocalStrategy(
@@ -47,7 +51,7 @@ passport.use(
         }
 
         // ─────────────────────────────
-        // SOFT DELETE CHECK 
+        // SOFT DELETE CHECK
         // ─────────────────────────────
         // if ((user as any).isDeleted) {
         //   return done(null, false, {
@@ -93,7 +97,6 @@ passport.use(
   ),
 );
 
-
 passport.use(
   new GoogleStrategy(
     {
@@ -129,8 +132,12 @@ passport.use(
           });
         }
 
-        if (state && state?.role && ![UserRole.SEEKER, UserRole.EMPLOYER].includes(state.role)) {
-           return done("Invalid role");
+        if (
+          state &&
+          state?.role &&
+          ![UserRole.SEEKER, UserRole.EMPLOYER].includes(state.role)
+        ) {
+          return done('Invalid role');
         }
 
         const role = state?.role || UserRole.SEEKER;
@@ -199,15 +206,15 @@ passport.use(
 );
 
 passport.serializeUser((user: any, done: (err: any, id?: unknown) => void) => {
-  done(null, user._id)
-})
+  done(null, user._id);
+});
 
 passport.deserializeUser(async (id: string, done: any) => {
   try {
     const user = await User.findById(id);
-    done(null, user)
+    done(null, user);
   } catch (error) {
     console.log(error);
-    done(error)
+    done(error);
   }
-})
+});

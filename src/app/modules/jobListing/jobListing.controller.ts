@@ -1,10 +1,8 @@
-
 import { Request, Response } from 'express';
 import catchAsync from '../../utils/catchAsync';
 import httpStatus from 'http-status-codes';
 import { sendResponse } from '../../utils/sendResponse';
 import { jobListingService } from './jobListing.service';
-
 
 const createJobListing = catchAsync(async (req: Request, res: Response) => {
   // Call service to create job listing
@@ -19,7 +17,6 @@ const createJobListing = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getAllJobListing = catchAsync(async (req: Request, res: Response) => {
   // Call service with query parameters for filtering and pagination
   const result = await jobListingService.getAllJobListing(req.query);
@@ -33,7 +30,6 @@ const getAllJobListing = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getJobListingById = catchAsync(async (req: Request, res: Response) => {
   // Call service to fetch job listing by ID
   const result = await jobListingService.getJobListingById(req.params.id);
@@ -46,7 +42,6 @@ const getJobListingById = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
-
 
 const updateJobListing = catchAsync(async (req: Request, res: Response) => {
   // Call service to update job listing
@@ -64,7 +59,6 @@ const updateJobListing = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const deleteJobListing = catchAsync(async (req: Request, res: Response) => {
   // Call service to delete job listing and associated applications
   const result = await jobListingService.deleteJobListing(req.params.id);
@@ -78,7 +72,6 @@ const deleteJobListing = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
-
 
 export const jobListingController = {
   createJobListing,

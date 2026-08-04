@@ -1,4 +1,3 @@
-
 import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
 import { sendResponse } from '../../utils/sendResponse';
@@ -8,10 +7,7 @@ import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
 const createEducation = catchAsync(async (req: Request, res: Response) => {
   const userId = getUserIdFromReq(req);
-  const result = await seekerEducationService.createEducation(
-    userId,
-    req.body,
-  );
+  const result = await seekerEducationService.createEducation(userId, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,

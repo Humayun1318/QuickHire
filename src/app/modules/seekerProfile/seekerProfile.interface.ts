@@ -23,12 +23,12 @@ export interface IExpectedSalary {
 // ─────────────────────────────────────────────────────────────
 
 export interface ISeekerProfile {
-  userId: Types.ObjectId;       // FK → users
-  headline?: string;            // e.g. "Senior React Developer | 5yrs exp"
-  bio?: string;                 // longer personal summary
+  userId: Types.ObjectId; // FK → users
+  headline?: string; // e.g. "Senior React Developer | 5yrs exp"
+  bio?: string; // longer personal summary
   address?: IAddress;
-  skills: string[];             // e.g. ["Node.js", "TypeScript", "MongoDB"]
-  languages?: string[];         // spoken languages e.g. ["Bengali", "English"]
+  skills: string[]; // e.g. ["Node.js", "TypeScript", "MongoDB"]
+  languages?: string[]; // spoken languages e.g. ["Bengali", "English"]
   expectedSalary?: IExpectedSalary;
   jobPreference?: JobPreferenceType;
   availabilityStatus: AvailabilityStatus;

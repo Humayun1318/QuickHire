@@ -62,93 +62,92 @@ export const authProviderZodSchema = z.object({
 // ----------------------
 // Create User Schema
 // ----------------------
-export const createUserZodSchema = z
-  .object({
-    name: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined
-            ? 'Name is required'
-            : 'Name must be a string',
-      })
-      .trim()
-      .min(2, 'Name must be at least 2 characters')
-      .max(50, 'Name cannot exceed 50 characters'),
+export const createUserZodSchema = z.object({
+  name: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Name is required'
+          : 'Name must be a string',
+    })
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name cannot exceed 50 characters'),
 
-    email: emailValidationSchema,
+  email: emailValidationSchema,
 
-    password: passwordValidationSchema,
+  password: passwordValidationSchema,
 
-    phone: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined
-            ? 'Phone number is required'
-            : 'Phone must be a string',
-      })
-      .min(10, 'Phone must be at least 10 digits')
-      .max(15, 'Phone number too long')
-      .optional()
-      .nullable(),
+  phone: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Phone number is required'
+          : 'Phone must be a string',
+    })
+    .min(10, 'Phone must be at least 10 digits')
+    .max(15, 'Phone number too long')
+    .optional()
+    .nullable(),
 
-    avatar: z
-      .string({
-        error: (issue) =>
-          issue.input === undefined
-            ? 'Avatar URL is required'
-            : 'Avatar must be a string',
-      })
-      .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
-        message: 'Avatar must be a valid URL',
-      })
-      .optional()
-      .nullable(),
+  avatar: z
+    .string({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'Avatar URL is required'
+          : 'Avatar must be a string',
+    })
+    .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
+      message: 'Avatar must be a valid URL',
+    })
+    .optional()
+    .nullable(),
 
-    role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
+  role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
 
-    // auths: z
-    //   .array(authProviderZodSchema, {
-    //     error: (issue) => {
-    //       if (issue.input === undefined)
-    //         return 'Authentication provider is required';
-    //       return 'Auths must be an array';
-    //     },
-    //   })
-    //   .min(1, 'At least one authentication provider is required'),
-  })
-  // .superRefine((data, ctx) => {
-  //   if (data.auths) {
-  //     const hasLocal = data.auths.some(
-  //       (entry) => entry.provider === AuthProvider.LOCAL,
-  //     );
+  // auths: z
+  //   .array(authProviderZodSchema, {
+  //     error: (issue) => {
+  //       if (issue.input === undefined)
+  //         return 'Authentication provider is required';
+  //       return 'Auths must be an array';
+  //     },
+  //   })
+  //   .min(1, 'At least one authentication provider is required'),
+});
+// .superRefine((data, ctx) => {
+//   if (data.auths) {
+//     const hasLocal = data.auths.some(
+//       (entry) => entry.provider === AuthProvider.LOCAL,
+//     );
 
-  //     if (hasLocal && !data.password) {
-  //       ctx.addIssue({
-  //         code: 'custom',
-  //         message: 'Password is required for local authentication',
-  //         path: ['password'],
-  //       });
-  //     }
+//     if (hasLocal && !data.password) {
+//       ctx.addIssue({
+//         code: 'custom',
+//         message: 'Password is required for local authentication',
+//         path: ['password'],
+//       });
+//     }
 
-  //     if (!hasLocal && data.password) {
-  //       ctx.addIssue({
-  //         code: 'custom',
-  //         message: 'Password should not be provided for OAuth users',
-  //         path: ['password'],
-  //       });
-  //     }
+//     if (!hasLocal && data.password) {
+//       ctx.addIssue({
+//         code: 'custom',
+//         message: 'Password should not be provided for OAuth users',
+//         path: ['password'],
+//       });
+//     }
 
-  //     const providers = data.auths.map((entry) => entry.provider);
+//     const providers = data.auths.map((entry) => entry.provider);
 
-  //     if (new Set(providers).size !== providers.length) {
-  //       ctx.addIssue({
-  //         code: 'custom',
-  //         message: 'Duplicate auth providers are not allowed',
-  //         path: ['auths'],
-  //       });
-  //     }
-  //   }
-  // });
+//     if (new Set(providers).size !== providers.length) {
+//       ctx.addIssue({
+//         code: 'custom',
+//         message: 'Duplicate auth providers are not allowed',
+//         path: ['auths'],
+//       });
+//     }
+//   }
+// });
 
 // ----------------------
 // Update User Schema

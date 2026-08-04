@@ -1,17 +1,15 @@
-
-
 import { Document, Model, Types } from 'mongoose';
 import { DegreeType } from './seekerEducation.constants';
 
 export interface ISeekerEducation {
-  profileId: Types.ObjectId;  // FK → seekerProfiles
-  userId: Types.ObjectId;     // Denormalized FK → users (for ownership checks without join)
+  profileId: Types.ObjectId; // FK → seekerProfiles
+  userId: Types.ObjectId; // Denormalized FK → users (for ownership checks without join)
   institution: string;
   degree: DegreeType;
   fieldOfStudy?: string;
   startDate: Date;
-  endDate?: Date;             // null = currently studying
-  grade?: string;             // e.g. "3.8 GPA" or "First Class"
+  endDate?: Date; // null = currently studying
+  grade?: string; // e.g. "3.8 GPA" or "First Class"
   description?: string;
   isCurrentlyStudying: boolean;
   createdAt?: Date;

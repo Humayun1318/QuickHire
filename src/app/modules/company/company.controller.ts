@@ -1,4 +1,3 @@
-
 import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
 import { sendResponse } from '../../utils/sendResponse';
@@ -9,9 +8,8 @@ import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
 // POST /companies
 const createCompany = catchAsync(async (req: Request, res: Response) => {
-  const userId = getUserIdFromReq(req)
+  const userId = getUserIdFromReq(req);
   const result = await companyService.createCompany(userId, req.body);
-
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -40,7 +38,9 @@ const getSingleCompany = catchAsync(async (req: Request, res: Response) => {
     companyId: req.query.companyId,
     slug: req.query.slug,
   };
-  const result = await companyService.getSingleCompany(companyIdentifier as { companyId?: string; slug?: string });
+  const result = await companyService.getSingleCompany(
+    companyIdentifier as { companyId?: string; slug?: string },
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

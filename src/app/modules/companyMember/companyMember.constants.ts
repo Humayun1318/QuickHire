@@ -1,16 +1,19 @@
-export const MEMBER_NOT_FOUND        = 'Company member not found';
-export const MEMBER_ALREADY_EXISTS   = 'This user is already a member of the company';
-export const CANNOT_REMOVE_OWNER     = 'The company owner cannot be removed from members';
+export const MEMBER_NOT_FOUND = 'Company member not found';
+export const MEMBER_ALREADY_EXISTS =
+  'This user is already a member of the company';
+export const CANNOT_REMOVE_OWNER =
+  'The company owner cannot be removed from members';
 export const CANNOT_CHANGE_OWNER_ROLE = 'The owner role cannot be changed';
-export const OWNER_CANNOT_LEAVE      = 'Owner cannot leave the company. Transfer ownership or delete the company.';
+export const OWNER_CANNOT_LEAVE =
+  'Owner cannot leave the company. Transfer ownership or delete the company.';
 
 // Hierarchical roles — order matters for permission checks
 // OWNER > ADMIN > HR > RECRUITER > INTERVIEWER
 export enum CompanyMemberRole {
-  OWNER       = 'OWNER',
-  ADMIN       = 'ADMIN',
-  HR          = 'HR',
-  RECRUITER   = 'RECRUITER',
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  HR = 'HR',
+  RECRUITER = 'RECRUITER',
   INTERVIEWER = 'INTERVIEWER',
 }
 
@@ -28,7 +31,7 @@ export const ROLE_PERMISSIONS: Record<CompanyMemberRole, string[]> = {
     'view_analytics',
   ],
   [CompanyMemberRole.ADMIN]: [
-    'manage_members',     // can add/remove members but not owner
+    'manage_members', // can add/remove members but not owner
     'manage_company',
     'post_jobs',
     'delete_jobs',
@@ -49,8 +52,5 @@ export const ROLE_PERMISSIONS: Record<CompanyMemberRole, string[]> = {
     'view_applications',
     'manage_applications',
   ],
-  [CompanyMemberRole.INTERVIEWER]: [
-    'view_applications',
-    'schedule_interviews',
-  ],
+  [CompanyMemberRole.INTERVIEWER]: ['view_applications', 'schedule_interviews'],
 };

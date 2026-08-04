@@ -6,12 +6,13 @@ import { CompanyMemberRole } from './companyMember.constants';
 import catchAsync from '../../utils/catchAsync';
 import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
-// POST /companies/:companyId/members
+// POST /companies/members
 const addMember = catchAsync(async (req: Request, res: Response) => {
-  const userId = getUserIdFromReq(req)
+  const userId = getUserIdFromReq(req);
+
   const result = await companyMemberService.addMember(
-    req.params.companyId,
-    userId,      // the person doing the adding    
+    req.body.companyId,
+    userId, // the person doing the adding
     req.body.userId, // the person who will be added as a member
     req.body.role as CompanyMemberRole,
   );
@@ -24,13 +25,15 @@ const addMember = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /companies/:companyId/members
+// GET /companies/members
 const getCompanyMembers = catchAsync(async (req: Request, res: Response) => {
   const companyIdentifier = {
-    companyId: req.params.companyId,
-    slug: req.params.slug,
+    companyId: req.query.companyId as string,
+    slug: req.query.slug as string,
   };
-  const result = await companyMemberService.getCompanyMembers(companyIdentifier);
+
+  const result =
+    await companyMemberService.getCompanyMembers(companyIdentifier);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -40,10 +43,10 @@ const getCompanyMembers = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// PATCH /companies/:companyId/members/:memberId
+// PATCH /companies/members/:memberId
 const updateMemberRole = catchAsync(async (req: Request, res: Response) => {
   const result = await companyMemberService.updateMemberRole(
-    req.params.companyId,
+    req.body.companyId,
     getUserIdFromReq(req),
     req.params.memberId,
     req.body.role as CompanyMemberRole,
@@ -57,7 +60,7 @@ const updateMemberRole = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// DELETE /companies/:companyId/members/:memberId
+// DELETE /companies/members/:memberId
 const removeMember = catchAsync(async (req: Request, res: Response) => {
   const result = await companyMemberService.removeMember(
     req.params.companyId,
@@ -73,7 +76,7 @@ const removeMember = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// DELETE /companies/:companyId/members/leave
+// DELETE /companies/members/leave
 const leaveCompany = catchAsync(async (req: Request, res: Response) => {
   const result = await companyMemberService.leaveCompany(
     req.params.companyId,

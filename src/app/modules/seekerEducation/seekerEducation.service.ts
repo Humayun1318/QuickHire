@@ -35,7 +35,10 @@ const createEducation = async (
   // Bump completeness score only on first education entry —
   // subsequent entries don't add more points (field is already "filled")
   if (isFirst) {
-    await seekerProfileService.incrementCompleteness(userId, EDUCATION_COMPLETENESS_POINTS);
+    await seekerProfileService.incrementCompleteness(
+      userId,
+      EDUCATION_COMPLETENESS_POINTS,
+    );
   }
 
   return education;
@@ -69,32 +72,20 @@ const updateEducation = async (
   return updated;
 };
 
-const deleteEducation = async (
-  educationId: string,
-  userId: string,
-) => {
- const session = await mongoose.startSession();
+const deleteEducation = async (educationId: string, userId: string) => {
+  const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    const education = await SeekerEducation.isOwnedByUser(
-      educationId,
-      userId,
-    );
+    const education = await SeekerEducation.isOwnedByUser(educationId, userId);
 
     if (!education) {
-      throw new AppError(
-        HTTP_STATUS_CODE.FORBIDDEN,
-        EDUCATION_NOT_OWNED,
-      );
+      throw new AppError(HTTP_STATUS_CODE.FORBIDDEN, EDUCATION_NOT_OWNED);
     }
 
     // Delete education
-    await SeekerEducation.findByIdAndDelete(
-      educationId,
-      { session },
-    );
+    await SeekerEducation.findByIdAndDelete(educationId, { session });
 
     // Check if user still has any education
     const remainingEducation = await SeekerEducation.findOne({

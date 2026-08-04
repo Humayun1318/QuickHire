@@ -1,4 +1,3 @@
-
 import {
   SEEKER_PROFILE_ALREADY_EXISTS,
   SEEKER_PROFILE_NOT_FOUND,
@@ -20,7 +19,10 @@ const createSeekerProfile = async (
   // Guard: prevent duplicate profiles (belt-and-suspenders with unique index)
   const existing = await SeekerProfile.isProfileExists(userId);
   if (existing) {
-    throw new AppError(HTTP_STATUS_CODE.CONFLICT, SEEKER_PROFILE_ALREADY_EXISTS);
+    throw new AppError(
+      HTTP_STATUS_CODE.CONFLICT,
+      SEEKER_PROFILE_ALREADY_EXISTS,
+    );
   }
 
   const profile = await SeekerProfile.create({ ...payload, userId });
@@ -64,10 +66,12 @@ const getProfileById = async (profileId: string, active: boolean = true) => {
 // Get all active profiles — for employer directory listing
 // ─────────────────────────────────────────────────────────────
 const getAllProfiles = async (active: boolean = true) => {
-  const profiles = await SeekerProfile.find({ isActive: active }).populate('userId', 'name email');
+  const profiles = await SeekerProfile.find({ isActive: active }).populate(
+    'userId',
+    'name email',
+  );
   return profiles;
 };
-
 
 // ─────────────────────────────────────────────────────────────
 // Update — partial update, completeness recalculated via pre hook
@@ -81,7 +85,7 @@ const updateSeekerProfile = async (
     { userId, isActive: true },
     { $set: payload },
     {
-      new: true,         // return updated document
+      new: true, // return updated document
       runValidators: true, // run schema validators on update
     },
   );
@@ -124,7 +128,7 @@ const incrementCompleteness = async (
   await SeekerProfile.findOneAndUpdate(
     { userId },
     { $inc: { profileCompleteness: points } },
-    { new: true, session }
+    { new: true, session },
   );
 };
 

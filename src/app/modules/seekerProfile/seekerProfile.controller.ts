@@ -43,7 +43,10 @@ const getProfileById = catchAsync(async (req: Request, res: Response) => {
   let result;
   let message;
   if (req.query?.profileId) {
-    result = await seekerProfileService.getProfileById(req.query?.profileId as string, active);
+    result = await seekerProfileService.getProfileById(
+      req.query?.profileId as string,
+      active,
+    );
     message = 'Profile retrieved successfully';
   } else {
     result = await seekerProfileService.getAllProfiles(active);

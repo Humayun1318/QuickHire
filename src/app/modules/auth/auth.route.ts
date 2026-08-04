@@ -52,12 +52,8 @@ router.get(
   },
 );
 
-router.get(
-  '/google/callback',
-  authController.googleCallbackController,
-);
+router.get('/google/callback', authController.googleCallbackController);
 //________________________________________________________
-
 
 router.patch('/update/:id', authController.updateAuth);
 router.delete('/delete/:id', authController.deleteAuth);

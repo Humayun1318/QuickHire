@@ -4,8 +4,6 @@ import { userService } from './user.service';
 import { sendResponse } from '../../utils/sendResponse';
 import httpStatus from 'http-status-codes';
 
-
-
 const getAllUser = catchAsync(async (req: Request, res: Response) => {
   // Call service layer to fetch all users from database
   const result = await userService.getAllUser();
@@ -33,7 +31,6 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
 const updateUser = catchAsync(async (req: Request, res: Response) => {
   // TODO: Implement update user logic
 });
-
 
 const deleteUser = catchAsync(async (req: Request, res: Response) => {
   // TODO: Implement delete user logic

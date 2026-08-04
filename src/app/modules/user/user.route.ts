@@ -5,10 +5,8 @@ import { createUserZodSchema } from './user.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from './user.interface';
 
-
 // Initialize Express router for user routes
 const router = Router();
-
 
 router.patch('/update/:id', userController.updateUser);
 router.delete('/delete/:id', userController.deleteUser);

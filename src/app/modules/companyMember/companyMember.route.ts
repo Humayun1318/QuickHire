@@ -1,7 +1,6 @@
-
 import { Router } from 'express';
-import { checkAuth }               from '../../middlewares/checkAuth';
-import { validateRequest }         from '../../middlewares/validateRequest';
+import { checkAuth } from '../../middlewares/checkAuth';
+import { validateRequest } from '../../middlewares/validateRequest';
 import { companyMemberController } from './companyMember.controller';
 import { companyMemberValidation } from './companyMember.validation';
 import { UserRole } from '../user/user.interface';
@@ -26,7 +25,7 @@ router.get(
 
 // Leave company — any member except owner
 router.delete(
-  '/leave',
+  '/leave/:companyId',
   checkAuth(UserRole.EMPLOYER),
   companyMemberController.leaveCompany,
 );
@@ -41,7 +40,7 @@ router.patch(
 
 // Remove member — employer only (OWNER/ADMIN check in service)
 router.delete(
-  '/:memberId',
+  '/:companyId/:memberId',
   checkAuth(UserRole.EMPLOYER),
   companyMemberController.removeMember,
 );

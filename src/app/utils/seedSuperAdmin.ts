@@ -7,7 +7,6 @@ import {
 } from '../modules/user/user.interface';
 import { User } from '../modules/user/user.models';
 
-
 export const seedSuperAdmin = async () => {
   try {
     const isSuperAdminExist = await User.findOne({
@@ -42,7 +41,7 @@ export const seedSuperAdmin = async () => {
       auths: [authProvider],
     };
 
-     await User.create(payload);
+    await User.create(payload);
     console.log('Super Admin Created Successfuly! \n');
   } catch (error) {
     console.log(error);

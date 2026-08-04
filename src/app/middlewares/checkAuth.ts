@@ -1,4 +1,3 @@
-
 import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status-codes';
 import { JwtPayload } from 'jsonwebtoken';
@@ -7,7 +6,6 @@ import AppError from '../errorHelpers/AppError';
 import { verifyToken } from '../utils/jwt';
 import { User } from '../modules/user/user.models';
 import { validateUserStatus } from '../utils/validateUserStatus';
-
 
 export const checkAuth =
   (...authRoles: string[]) =>

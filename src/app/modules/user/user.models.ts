@@ -17,14 +17,14 @@ import {
 const authEntrySchema = new Schema(
   {
     provider: {
-      type:     String,
-      enum:     Object.values(AuthProvider),
+      type: String,
+      enum: Object.values(AuthProvider),
       required: [true, 'Auth provider is required'],
     },
     providerId: {
-      type:     String,
+      type: String,
       required: [true, 'Provider ID is required'],
-      trim:     true,
+      trim: true,
     },
   },
   { _id: false, versionKey: false },
@@ -38,41 +38,41 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
   {
     // ── Core Identity ──────────────────────────────
     name: {
-      type:     String,
+      type: String,
       required: [true, 'Name is required'],
-      trim:     true,
+      trim: true,
       minlength: [2, 'Name must be at least 2 characters'],
       maxlength: [50, 'Name cannot exceed 50 characters'],
     },
 
     email: {
-      type:      String,
-      required:  [true, 'Email is required'],
-      unique:    true,   // unique: true automatically creates an index
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true, // unique: true automatically creates an index
       lowercase: true,
-      trim:      true,
+      trim: true,
     },
 
     password: {
-      type:   String,
+      type: String,
       select: false,
     },
 
     avatar: {
-      type:    String,
+      type: String,
       default: null,
     },
 
     phone: {
-      type:    String,
-      trim:    true,
+      type: String,
+      trim: true,
       default: null,
     },
 
     // ── Role ──────────────────────────────────────
     role: {
-      type:    String,
-      enum:    Object.values(UserRole),
+      type: String,
+      enum: Object.values(UserRole),
       default: UserRole.SEEKER,
 
       /**
@@ -85,7 +85,7 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     },
 
     auths: {
-      type:    [authEntrySchema],
+      type: [authEntrySchema],
       required: [true, 'At least one auth provider is required'],
     },
 
@@ -97,44 +97,44 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
      *   - Cleanup job: { status: 'inactive' }
      */
     status: {
-      type:    String,
-      enum:    Object.values(AccountStatus),
+      type: String,
+      enum: Object.values(AccountStatus),
       default: AccountStatus.ACTIVE,
-      index:   true,
+      index: true,
     },
 
     isVerified: {
-      type:    Boolean,
+      type: Boolean,
       default: false,
     },
 
     lastLogin: {
-      type:    Date,
+      type: Date,
       default: null,
     },
 
     // ── FK References ──────────────────────────────
     seekerProfileId: {
-      type:    Schema.Types.ObjectId,
-      ref:     'SeekerProfile',
+      type: Schema.Types.ObjectId,
+      ref: 'SeekerProfile',
       default: undefined,
     },
 
     companyId: {
-      type:    Schema.Types.ObjectId,
-      ref:     'Company',
+      type: Schema.Types.ObjectId,
+      ref: 'Company',
       default: undefined,
     },
 
     subscriptionId: {
-      type:    Schema.Types.ObjectId,
-      ref:     'Subscription',
+      type: Schema.Types.ObjectId,
+      ref: 'Subscription',
       default: undefined,
     },
   },
   {
     timestamps: true,
-    versionKey: false, 
+    versionKey: false,
 
     /**
      * toJSON transform:
@@ -180,7 +180,6 @@ userSchema.index({ 'auths.provider': 1, 'auths.providerId': 1 });
 // PRE-SAVE HOOKS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-
 userSchema.pre('save', async function (next) {
   if (!this.password || !this.isModified('password')) return next();
 
@@ -195,7 +194,6 @@ userSchema.pre('save', async function (next) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  INSTANCE METHODS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 
 userSchema.methods.comparePassword = function (
   this: IUser,
@@ -251,13 +249,12 @@ userSchema.statics.findByGoogleId = function (googleId: string) {
   return this.findOne({
     auths: {
       $elemMatch: {
-        provider:   AuthProvider.GOOGLE,
+        provider: AuthProvider.GOOGLE,
         providerId: googleId,
       },
     },
   });
 };
-
 
 userSchema.statics.existsById = async function (id: string): Promise<boolean> {
   return !!(await this.exists({ _id: id }));
