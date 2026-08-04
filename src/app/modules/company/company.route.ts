@@ -1,5 +1,4 @@
 
-
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { validateRequest } from '../../middlewares/validateRequest';
@@ -26,14 +25,8 @@ router.get(
 
 // Get by slug — public (seekers browsing companies)
 router.get(
-    '/slug/:slug',
-    companyController.getCompanyBySlug,
-);
-
-// Get by ID — public
-router.get(
-    '/:companyId',
-    companyController.getCompanyById,
+    '/',
+    companyController.getSingleCompany,
 );
 
 // Update own company — employer only
@@ -54,7 +47,7 @@ router.delete(
 // Admin: update verification status
 router.patch(
     '/:companyId/verification',
-    checkAuth(UserRole.ADMIN),
+    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     validateRequest(companyValidation.updateVerificationSchema),
     companyController.updateVerificationStatus,
 );

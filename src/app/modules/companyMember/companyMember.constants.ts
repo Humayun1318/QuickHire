@@ -1,5 +1,3 @@
-
-
 export const MEMBER_NOT_FOUND        = 'Company member not found';
 export const MEMBER_ALREADY_EXISTS   = 'This user is already a member of the company';
 export const CANNOT_REMOVE_OWNER     = 'The company owner cannot be removed from members';

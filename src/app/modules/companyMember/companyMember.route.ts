@@ -20,7 +20,7 @@ router.post(
 // Get all members — employer and admin
 router.get(
   '/',
-  checkAuth(UserRole.EMPLOYER, UserRole.ADMIN),
+  checkAuth(UserRole.EMPLOYER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
   companyMemberController.getCompanyMembers,
 );
 

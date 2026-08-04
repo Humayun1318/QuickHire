@@ -34,21 +34,13 @@ const getMyCompany = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /companies/:companyId
-const getCompanyById = catchAsync(async (req: Request, res: Response) => {
-  const result = await companyService.getCompanyById(req.params.companyId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Company retrieved successfully',
-    data: result,
-  });
-});
-
-// GET /companies/slug/:slug
-const getCompanyBySlug = catchAsync(async (req: Request, res: Response) => {
-  const result = await companyService.getCompanyBySlug(req.params.slug);
+// GET /companies?slug=some-slug or /companies?companyId=some-id
+const getSingleCompany = catchAsync(async (req: Request, res: Response) => {
+  const companyIdentifier = {
+    companyId: req.query.companyId,
+    slug: req.query.slug,
+  };
+  const result = await companyService.getSingleCompany(companyIdentifier as { companyId?: string; slug?: string });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -113,8 +105,7 @@ const updateVerificationStatus = catchAsync(
 export const companyController = {
   createCompany,
   getMyCompany,
-  getCompanyById,
-  getCompanyBySlug,
+  getSingleCompany,
   updateCompany,
   deleteCompany,
   updateVerificationStatus,

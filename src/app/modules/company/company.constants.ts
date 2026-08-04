@@ -2,7 +2,7 @@
 
 export const COMPANY_NOT_FOUND = 'Company not found';
 export const COMPANY_ALREADY_EXISTS =
-    'You have already created a company. Each employer can only own one company.';
+    'You have already a active company. Each employer can only own one company at a time.';
 export const COMPANY_SLUG_TAKEN =
     'A company with this name already exists. Please choose a different name.';
 

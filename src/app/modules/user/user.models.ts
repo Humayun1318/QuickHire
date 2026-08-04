@@ -139,9 +139,6 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     /**
      * toJSON transform:
      *
-     * তোমার original code এ এটা ছিল — রাখা হয়েছে।
-     * এটা "safety net" হিসেবে কাজ করে।
-     *
      * select: false password কে query থেকে বাদ দেয়।
      * কিন্তু যদি কোনোভাবে password loaded থাকে এবং
      * res.json(user) করা হয় — এই transform সেটা delete করে।

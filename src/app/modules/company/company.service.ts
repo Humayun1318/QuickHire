@@ -4,13 +4,14 @@ import {
   COMPANY_NOT_FOUND,
   CompanyVerificationStatus,
 } from './company.constants';
-import { ICompany } from './company.interface';
+import { ICompany, ICompanyDocument } from './company.interface';
 import { Company } from './company.models';
 import AppError from '../../errorHelpers/AppError';
 import { CompanyMemberRole } from '../companyMember/companyMember.constants';
 import { CompanyMember } from '../companyMember/companyMember.models';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import mongoose from 'mongoose';
+import { requireCompanyRole } from './company.authorization';
 
 
 // ─────────────────────────────────────────────────────────────
@@ -68,7 +69,6 @@ const createCompany = async (
 // ─────────────────────────────────────────────────────────────
 // Get own company — employer fetching their own company
 // ─────────────────────────────────────────────────────────────
-
 const getMyCompany = async (ownerId: string) => {
   const company = await Company.findOne({ ownerId, isActive: true })
     .populate('ownerId', 'name email avatar');
@@ -82,27 +82,24 @@ const getMyCompany = async (ownerId: string) => {
 
 // ─────────────────────────────────────────────────────────────
 // Get public company profile — for job seekers browsing companies
-// ─────────────────────────────────────────────────────────────
-
-const getCompanyById = async (companyId: string) => {
-  const company = await Company.findOne({
-    _id: companyId,
-    isActive: true,
-  }).populate('ownerId', 'name avatar');
+// Get by slug — used for public company page URLs (/companies/techcorp-ltd)
+const getSingleCompany = async (companyIdentifier: { companyId?: string; slug?: string }) => {
+  const { companyId, slug } = companyIdentifier;
+  let company: ICompanyDocument | null = null;
+  if (companyId) {
+    company = await Company.findOne({ _id: companyId, isActive: true });
+  } else if (slug) {
+    company = await Company.findOne({
+      slug, isActive: true
+    });
+  }
 
   if (!company) {
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
   }
 
-  return company;
-};
-
-// Get by slug — used for public company page URLs (/companies/techcorp-ltd)
-const getCompanyBySlug = async (slug: string) => {
-  const company = await Company.findOne({ slug, isActive: true });
-
-  if (!company) {
-    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
+  if (company.verificationStatus !== CompanyVerificationStatus.VERIFIED) {
+    throw new AppError(HTTP_STATUS_CODE.FORBIDDEN, 'This company is not verified yet');
   }
 
   return company;
@@ -111,38 +108,56 @@ const getCompanyBySlug = async (slug: string) => {
 // ─────────────────────────────────────────────────────────────
 // Update — employer can only update their own company
 // ─────────────────────────────────────────────────────────────
-
 const updateCompany = async (
   companyId: string,
-  ownerId: string,
+  userId: string,
   payload: Partial<ICompany>,
 ) => {
-  // Ownership check before update
-  const owned = await Company.isOwnedByUser(companyId, ownerId);
-  if (!owned) {
+  // Check whether the user belongs to this company
+  const member = await requireCompanyRole(
+    companyId,
+    userId,
+    [
+      CompanyMemberRole.OWNER,
+      CompanyMemberRole.ADMIN,
+    ],
+  );
+
+  // OWNER -> can update everything
+  // ADMIN -> everything except company name
+  if (
+    member.role === CompanyMemberRole.ADMIN &&
+    payload.name
+  ) {
     throw new AppError(
       HTTP_STATUS_CODE.FORBIDDEN,
-      'You do not have permission to update this company',
+      'Admins cannot update company name',
     );
   }
 
   const updated = await Company.findByIdAndUpdate(
     companyId,
-    { $set: payload },
-    { new: true, runValidators: true },
+    {
+      $set: payload,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
   );
 
   if (!updated) {
-    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
+    throw new AppError(
+      HTTP_STATUS_CODE.NOT_FOUND,
+      COMPANY_NOT_FOUND,
+    );
   }
 
   return updated;
 };
-
 // ─────────────────────────────────────────────────────────────
 // Soft delete — keeps historical job/application data intact
 // ─────────────────────────────────────────────────────────────
-
 const deleteCompany = async (companyId: string, ownerId: string) => {
   const owned = await Company.isOwnedByUser(companyId, ownerId);
   if (!owned) {
@@ -159,7 +174,6 @@ const deleteCompany = async (companyId: string, ownerId: string) => {
 // ─────────────────────────────────────────────────────────────
 // Admin — update verification status
 // ─────────────────────────────────────────────────────────────
-
 const updateVerificationStatus = async (
   companyId: string,
   verificationStatus: CompanyVerificationStatus,
@@ -181,8 +195,7 @@ const updateVerificationStatus = async (
 export const companyService = {
   createCompany,
   getMyCompany,
-  getCompanyById,
-  getCompanyBySlug,
+  getSingleCompany,
   updateCompany,
   deleteCompany,
   updateVerificationStatus,

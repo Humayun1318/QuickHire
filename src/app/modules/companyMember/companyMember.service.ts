@@ -1,5 +1,3 @@
-
-
 import httpStatus from 'http-status-codes';
 import {
   CANNOT_CHANGE_OWNER_ROLE,
@@ -10,22 +8,23 @@ import {
   CompanyMemberRole,
 } from './companyMember.constants';
 import { CompanyMember } from './companyMember.models';
-import { Company }       from '../company/company.models';
+import { Company } from '../company/company.models';
 import { COMPANY_NOT_FOUND } from '../company/company.constants';
 import { User } from '../user/user.models';
 import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import { UserRole } from '../user/user.interface';
+import { ICompanyDocument } from '../company/company.interface';
 
 // ─────────────────────────────────────────────────────────────
 // Add member — owner or admin can add members
 // ─────────────────────────────────────────────────────────────
 
 const addMember = async (
-  companyId:    string,
-  requesterId:  string, // the person doing the adding
+  companyId: string,
+  requesterId: string, // the person doing the adding
   targetUserId: string,
-  role:         CompanyMemberRole,
+  role: CompanyMemberRole,
 ) => {
   // Verify company exists
   const company = await Company.isCompanyExists(companyId);
@@ -64,13 +63,13 @@ const addMember = async (
 
   const member = await CompanyMember.create({
     companyId,
-    userId:    targetUserId,
+    userId: targetUserId,
     role,
     invitedBy: requesterId,
   });
 
   return member.populate([
-    { path: 'userId',    select: 'name email avatar' },
+    { path: 'userId', select: 'name email avatar' },
     { path: 'invitedBy', select: 'name email' },
   ]);
 };
@@ -79,14 +78,20 @@ const addMember = async (
 // Get all members of a company
 // ─────────────────────────────────────────────────────────────
 
-const getCompanyMembers = async (companyId: string) => {
-  const company = await Company.isCompanyExists(companyId);
+const getCompanyMembers = async (companyIdentifier: { companyId?: string; slug?: string }) => {
+
+  let company: ICompanyDocument | null = null;
+  if (companyIdentifier.companyId) {
+    company = await Company.isCompanyExists(companyIdentifier.companyId);
+  } else {
+    company = await Company.findOne({ slug: companyIdentifier.slug, isActive: true });
+  }
   if (!company) {
     throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
   }
 
-  return CompanyMember.find({ companyId, isActive: true })
-    .populate('userId',    'name email avatar phone')
+  return CompanyMember.find({ companyId: company._id, isActive: true })
+    .populate('userId', 'name email avatar phone')
     .populate('invitedBy', 'name email')
     .sort({ createdAt: 1 }); // oldest member first — owner always at top
 };
@@ -97,14 +102,14 @@ const getCompanyMembers = async (companyId: string) => {
 // ─────────────────────────────────────────────────────────────
 
 const updateMemberRole = async (
-  companyId:    string,
-  requesterId:  string,
-  memberId:     string, // the _id of the companyMember document
-  newRole:      CompanyMemberRole,
+  companyId: string,
+  requesterId: string,
+  memberId: string, // the _id of the companyMember document
+  newRole: CompanyMemberRole,
 ) => {
   // Find the target member record
   const targetMember = await CompanyMember.findOne({
-    _id:      memberId,
+    _id: memberId,
     companyId,
     isActive: true,
   });
@@ -141,12 +146,12 @@ const updateMemberRole = async (
 // ─────────────────────────────────────────────────────────────
 
 const removeMember = async (
-  companyId:    string,
-  requesterId:  string,
-  memberId:     string,
+  companyId: string,
+  requesterId: string,
+  memberId: string,
 ) => {
   const targetMember = await CompanyMember.findOne({
-    _id:      memberId,
+    _id: memberId,
     companyId,
     isActive: true,
   });

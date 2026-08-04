@@ -51,38 +51,6 @@ const createUser = async (payload: IUser) => {
   return user;
 };
 
-// const createAuth = async (payload: Partial<IUser>) => {
-//   const { email, password } = payload;
-//   if (!email || !password) {
-//     throw new AppError(
-//       httpStatus.BAD_REQUEST,
-//       'Email and password are required',
-//     );
-//   }
-
-//   const existingUser = await User.findByEmail(email!);
-//   if (!existingUser) {
-//     throw new AppError(httpStatus.NOT_FOUND, 'No user found with this email');
-//   }
-
-//   // Validate user status (verified, active, blocked, deleted)
-//   validateUserStatus(existingUser);
-
-//   const isPasswordValid = await existingUser.comparePassword(password!);
-//   if (!isPasswordValid) {
-//     throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid credentials');
-//   }
-
-//   // Generate JWT token
-//   const userTokens = createUserTokens(existingUser);
-
-//   return {
-//     accessToken: userTokens.accessToken,
-//     refreshToken: userTokens.refreshToken,
-//     user: existingUser,
-//   };
-// };
-
 const getNewAccessTokenUsingRefreshToken = async (refreshToken: string) => {
   if (!refreshToken) {
     throw new AppError(
