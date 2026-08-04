@@ -7,7 +7,7 @@ import catchAsync from '../../utils/catchAsync';
 import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
 // POST /companies/members
-const addMember = catchAsync(async (req: Request, res: Response) => {
+const addMember = catchAsync(async (req, res) => {
   const userId = getUserIdFromReq(req);
 
   const result = await companyMemberService.addMember(

@@ -1,9 +1,4 @@
-/**
- * @file routes/index.ts
- * @description Central API routing configuration
- * This file aggregates all module routes and registers them with the main Express router
- * Provides a single point to manage all API endpoints
- */
+
 
 import { Router } from 'express';
 import { jobListingRoutes } from '../modules/jobListing/jobListing.route';
@@ -15,6 +10,7 @@ import { seekerEducationRoutes } from '../modules/seekerEducation/seekerEducatio
 import { seekerProfileRoutes } from '../modules/seekerProfile/seekerProfile.route';
 import { companyRoutes } from '../modules/company/company.route';
 import { companyMemberRoutes } from '../modules/companyMember/companyMember.route';
+import { jobCategoryRoutes } from '../modules/jobCategory/jobCategory.route';
 
 // Initialize Express router for API routes
 export const router = Router();
@@ -28,11 +24,6 @@ export const router = Router();
  * - route: Router instance from the module containing specific endpoint handlers
  */
 const moduleRoutes = [
-  {
-    // Job listing endpoints: /api/v1/jobs
-    path: '/jobs',
-    route: jobListingRoutes,
-  },
   {
     // Job application endpoints: /api/v1/applications
     path: '/applications',
@@ -67,6 +58,14 @@ const moduleRoutes = [
   {
     path: '/companies/members',
     route: companyMemberRoutes,
+  },
+  {
+    path: '/job-categories',
+    route: jobCategoryRoutes
+  },
+  {
+    path: '/jobs',
+    route: jobListingRoutes
   },
 ];
 
