@@ -1,5 +1,3 @@
-
-
 import { z } from 'zod';
 
 const createCategorySchema = z.object({

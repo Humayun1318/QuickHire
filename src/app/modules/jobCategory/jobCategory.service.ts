@@ -1,4 +1,4 @@
-import httpStatus from 'http-status-codes';
+
 import {
   CATEGORY_ALREADY_EXISTS,
   CATEGORY_HAS_CHILDREN,
@@ -12,6 +12,7 @@ import {
   buildCategoryTree,
 } from './jobCategory.utils';
 import AppError from '../../errorHelpers/AppError';
+import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 // ─────────────────────────────────────────────────────────────
 // Create — admin only
@@ -21,7 +22,7 @@ const createCategory = async (payload: Partial<IJobCategory>) => {
   // Prevent duplicate names (case-insensitive)
   const nameTaken = await JobCategory.isCategoryNameTaken(payload.name!);
   if (nameTaken) {
-    throw new AppError(httpStatus.CONFLICT, CATEGORY_ALREADY_EXISTS);
+    throw new AppError(HTTP_STATUS_CODE.CONFLICT, CATEGORY_ALREADY_EXISTS);
   }
 
   // Validate parentId exists and enforce max depth
@@ -30,7 +31,7 @@ const createCategory = async (payload: Partial<IJobCategory>) => {
       payload.parentId.toString(),
     );
     if (!parent) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Parent category not found');
+      throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, 'Parent category not found');
     }
 
 
@@ -39,7 +40,7 @@ const createCategory = async (payload: Partial<IJobCategory>) => {
     const breadcrumb = await buildBreadcrumb(payload.parentId.toString());
     if (breadcrumb.length >= MAX_CATEGORY_DEPTH) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
+        HTTP_STATUS_CODE.BAD_REQUEST,
         `Category nesting cannot exceed ${MAX_CATEGORY_DEPTH} levels`,
       );
     }
@@ -85,7 +86,7 @@ const getRootCategories = async () => {
 const getChildCategories = async (parentId: string) => {
   const parent = await JobCategory.isCategoryExists(parentId);
   if (!parent) {
-    throw new AppError(httpStatus.NOT_FOUND, CATEGORY_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
   return JobCategory.find({ parentId, isActive: true })
@@ -99,7 +100,7 @@ const getChildCategories = async (parentId: string) => {
 const getCategoryBySlug = async (slug: string) => {
   const category = await JobCategory.findOne({ slug, isActive: true });
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, CATEGORY_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
   const breadcrumb = await buildBreadcrumb((category._id as string).toString());
@@ -116,7 +117,7 @@ const updateCategory = async (
 ) => {
   const category = await JobCategory.isCategoryExists(categoryId);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, CATEGORY_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
   // If name is changing, check it isn't taken by another category
@@ -126,7 +127,7 @@ const updateCategory = async (
       categoryId,
     );
     if (nameTaken) {
-      throw new AppError(httpStatus.CONFLICT, CATEGORY_ALREADY_EXISTS);
+      throw new AppError(HTTP_STATUS_CODE.CONFLICT, CATEGORY_ALREADY_EXISTS);
     }
   }
 
@@ -147,7 +148,7 @@ const updateCategory = async (
 const deleteCategory = async (categoryId: string) => {
   const category = await JobCategory.isCategoryExists(categoryId);
   if (!category) {
-    throw new AppError(httpStatus.NOT_FOUND, CATEGORY_NOT_FOUND);
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
   // Prevent deleting a parent that still has children
@@ -156,13 +157,13 @@ const deleteCategory = async (categoryId: string) => {
     isActive: true,
   });
   if (childCount > 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, CATEGORY_HAS_CHILDREN);
+    throw new AppError(HTTP_STATUS_CODE.BAD_REQUEST, CATEGORY_HAS_CHILDREN);
   }
 
   // Guard: cannot delete if jobs are actively using this category
   if (category.jobCount > 0) {
     throw new AppError(
-      httpStatus.BAD_REQUEST,
+      HTTP_STATUS_CODE.BAD_REQUEST,
       `Cannot delete category with ${category.jobCount} active job(s)`,
     );
   }
