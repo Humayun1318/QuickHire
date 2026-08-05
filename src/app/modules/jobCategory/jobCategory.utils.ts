@@ -27,7 +27,7 @@ export const buildCategoryTree = (
 
   // Pass 1 — populate the map
   categories.forEach((cat) => {
-    map[cat._id.toString()] = {
+    map[(cat._id as string).toString()] = {
       ...(cat.toObject ? cat.toObject() : cat),
       children: [],
     } as ICategoryTreeNode;
@@ -37,7 +37,7 @@ export const buildCategoryTree = (
 
   // Pass 2 — wire parent → child relationships
   categories.forEach((cat) => {
-    const node = map[cat._id.toString()];
+    const node = map[(cat._id as string).toString()];
     if (cat.parentId) {
       const parentNode = map[cat.parentId.toString()];
       if (parentNode) {
@@ -68,15 +68,16 @@ export const buildBreadcrumb = async (
   let currentId: string | null = categoryId;
 
   while (currentId) {
-    const category = await JobCategory.findById(currentId)
-      .select('_id name slug parentId')
-      .lean();
+    const category: Pick<IJobCategoryDocument, '_id' | 'name' | 'slug' | 'parentId'> | null =
+      await JobCategory.findById(currentId)
+        .select('_id name slug parentId')
+        .lean();
 
     if (!category) break;
 
     // Prepend so result is root → leaf order
     breadcrumb.unshift({
-      _id:  category._id.toString(),
+      _id:  (category._id as any).toString(),
       name: category.name,
       slug: category.slug,
     });
@@ -104,7 +105,7 @@ export const getAllDescendantIds = (
   const findChildren = (parentId: string) => {
     allCategories.forEach((cat) => {
       if (cat.parentId?.toString() === parentId) {
-        const childId = cat._id.toString();
+        const childId = (cat._id as string).toString();
         result.push(childId);
         findChildren(childId); // recurse
       }

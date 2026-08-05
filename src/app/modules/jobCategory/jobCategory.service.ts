@@ -1,5 +1,3 @@
-
-
 import httpStatus from 'http-status-codes';
 import {
   CATEGORY_ALREADY_EXISTS,
@@ -8,7 +6,7 @@ import {
   MAX_CATEGORY_DEPTH,
 } from './jobCategory.constants';
 import { IJobCategory } from './jobCategory.interface';
-import { JobCategory }  from './jobCategory.models';
+import { JobCategory } from './jobCategory.models';
 import {
   buildBreadcrumb,
   buildCategoryTree,
@@ -35,10 +33,11 @@ const createCategory = async (payload: Partial<IJobCategory>) => {
       throw new AppError(httpStatus.NOT_FOUND, 'Parent category not found');
     }
 
+
     // Depth check: walk up from parent to root, count levels
     // If parent is already at depth MAX-1, this child would exceed MAX
     const breadcrumb = await buildBreadcrumb(payload.parentId.toString());
-    if (breadcrumb.length >= MAX_CATEGORY_DEPTH - 1) {
+    if (breadcrumb.length >= MAX_CATEGORY_DEPTH) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
         `Category nesting cannot exceed ${MAX_CATEGORY_DEPTH} levels`,
@@ -103,7 +102,7 @@ const getCategoryBySlug = async (slug: string) => {
     throw new AppError(httpStatus.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
-  const breadcrumb = await buildBreadcrumb(category._id.toString());
+  const breadcrumb = await buildBreadcrumb((category._id as string).toString());
   return { category, breadcrumb };
 };
 
@@ -113,7 +112,7 @@ const getCategoryBySlug = async (slug: string) => {
 
 const updateCategory = async (
   categoryId: string,
-  payload:    Partial<IJobCategory>,
+  payload: Partial<IJobCategory>,
 ) => {
   const category = await JobCategory.isCategoryExists(categoryId);
   if (!category) {
