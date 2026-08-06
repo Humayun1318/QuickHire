@@ -1,28 +1,26 @@
 import {
     FilterQuery,
-    PopulateOptions,
+    Model,
     Types,
 } from "mongoose";
+
 
 import {
     DEFAULT_LIMIT,
     DEFAULT_PAGE,
-    MAX_LIMIT,
-    RESERVED_QUERY_FIELDS,
-} from "./query.constants";
-
-import {
+    FIELDS_QUERY_KEY,
     FilterConfig,
+    LIMIT_QUERY_KEY, MAX_LIMIT,
     ModelQuery,
-    PaginationMeta,
-    QueryParams,
-    RangeFilterConfig,
-} from "./query.types";
+    PAGE_QUERY_KEY, PaginationMeta, QueryParams, SEARCH_QUERY_KEY,
+    SORT_QUERY_KEY
+} from "../shared/queryBuilder";
+
 
 export class QueryBuilder<T> {
 
-    private baseQuery: ModelQuery<T>;
     private modelQuery: ModelQuery<T>;
+    private model: Model<T>;
     private queryParams: QueryParams;
     private config: FilterConfig;
     private internalFilter: FilterQuery<T> = {};
@@ -31,11 +29,12 @@ export class QueryBuilder<T> {
     private skip = 0;
 
     constructor(
+        model: Model<T>,
         modelQuery: ModelQuery<T>,
         queryParams: QueryParams,
         config: FilterConfig
     ) {
-        this.baseQuery = modelQuery;
+        this.model = model;
         this.modelQuery = modelQuery;
         this.queryParams = queryParams;
         this.config = config;
@@ -43,51 +42,108 @@ export class QueryBuilder<T> {
         this.limit =
             config.defaultLimit ?? DEFAULT_LIMIT;
     }
+    /* ============================================================
+                                Helpers
+    ============================================================ */
+    /**
+         * Get string query parameter
+         * Example:
+         * search="  react  "
+         *
+         * =>
+         *
+         * "react"
+    */
+    private getString(
+        key: string
+    ): string {
+        const value =
+            this.queryParams[key];
 
-    private getString(key: string): string {
-        const value = this.queryParams[key];
         return typeof value === "string"
             ? value.trim()
             : "";
     }
+    /**
+         * Convert query value into number
+         * Example:
+         *
+         * page="10"
+         *
+         * =>
+         *
+         * 10
+    */
+    private getNumber(
+        key: string
+    ): number | undefined {
+        const value =
+            this.getString(key);
 
-    private getNumber(key: string): number | undefined {
-
-        const value = this.getString(key);
-        if (!value) return undefined;
-
-        const number = Number(value);
+        if (!value) {
+            return undefined;
+        }
+        const number =
+            Number(value);
 
         if (Number.isNaN(number)) {
             return undefined;
         }
         return number;
     }
-
+    /**
+     * Convert query value into boolean
+     * Example:
+     *
+     * isActive="true"
+     *
+     * =>
+     *
+     * true
+     */
     private getBoolean(
         key: string
     ): boolean | undefined {
-
-        const value = this.getString(key);
-        if (!value) return undefined;
-
-        if (value === "true") return true;
-        if (value === "false") return false;
-
+        const value =
+            this.getString(key);
+        if (value === "true") {
+            return true;
+        }
+        if (value === "false") {
+            return false;
+        }
         return undefined;
     }
+    /**
+     * Convert comma separated string into array
+     * Example:
+     * skills=React,Node,Express
+     * =>
+     * ["React","Node","Express"]
+     */
+    private getArray(
+        key: string
+    ): string[] {
+        const value =
+            this.getString(key);
 
-    private getArray(key: string): string[] {
-
-        const value = this.getString(key);
-        if (!value) return [];
-
+        if (!value) {
+            return [];
+        }
         return value
             .split(",")
             .map(item => item.trim())
             .filter(Boolean);
     }
-
+    /**
+     * Merge filter and apply mongoose query
+     * Example:
+     * {
+     *   status:"active"
+     * }
+     * =>
+     * MongoDB filter
+     */
     private addFilter(
         filter: FilterQuery<T>
     ) {
@@ -95,213 +151,226 @@ export class QueryBuilder<T> {
             ...this.internalFilter,
             ...filter,
         };
+
         this.modelQuery =
-            this.modelQuery.find(filter);
+            this.modelQuery.find(
+                this.internalFilter
+            );
     }
-
-
-    // search for keyword in searchable fields
+    /* ============================================================
+                                Search
+     ============================================================ */
+    /**
+         * Search keyword from searchable fields
+         * Example:
+         * search=john
+         * =>
+         * {
+         *   name: /john/i,
+         *   email: /john/i
+         * }
+    */
     search() {
-        const keyword = this.getString("search");
-
+        const keyword =
+            this.getString(SEARCH_QUERY_KEY);
         if (!keyword) {
             return this;
         }
 
         const searchableFields =
             this.config.searchableFields ?? [];
-
         if (!searchableFields.length) {
             return this;
         }
 
-        const conditions: FilterQuery<T>[] = [];
-
-        for (const field of searchableFields) {
-            conditions.push({
+        const conditions =
+            searchableFields.map(field => ({
                 [field]: {
                     $regex: keyword,
                     $options: "i",
                 },
-            } as FilterQuery<T>);
-        }
+            } as FilterQuery<T>));
 
         this.addFilter({
             $or: conditions,
         });
         return this;
     }
-
-    // filter based on filterable fields
+    /* ============================================================
+                                Filter
+    ============================================================ */
+    /**
+     * Filter data based on configured fields
+     * Supported:
+     *
+     * - Boolean
+     * - Array
+     * - ObjectId
+     * - Enum
+     * - String
+     */
     filter() {
+
         const filterableFields =
             this.config.filterableFields ?? [];
 
-        const booleanFields = new Set(
-            this.config.booleanFields ?? []
-        );
+        const booleanFields =
+            new Set(
+                this.config.booleanFields ?? []
+            );
+        const objectIdFields =
+            new Set(
+                this.config.objectIdFields ?? []
+            );
+        const arrayFields =
+            new Set(
+                this.config.arrayFields ?? []
+            );
+        const enumFields =
+            new Set(
+                this.config.enumFields ?? []
+            );
 
-        const objectIdFields = new Set(
-            this.config.objectIdFields ?? []
-        );
-
-        const arrayFields = new Set(
-            this.config.arrayFields ?? []
-        );
-
-        const enumFields = new Set(
-            this.config.enumFields ?? []
-        );
-
-        const filters: Record<string, unknown> = {};
+        const filters:
+            Record<string, unknown> = {};
 
         for (const field of filterableFields) {
-            const value = this.getString(field);
+            const value =
+                this.getString(field);
 
             if (!value) {
                 continue;
             }
-
-            if (
-                value === undefined ||
-                value === null ||
-                value === ""
-            ) {
-                continue;
-            }
             /**
-             * Boolean
+             * Example:
+             * isActive=true
+             * =>
+             *
+             * { isActive:true }
              */
-
             if (booleanFields.has(field)) {
-
                 const boolValue =
                     this.getBoolean(field);
-
                 if (boolValue !== undefined) {
-
-                    filters[field] = boolValue;
-
+                    filters[field] =
+                        boolValue;
                 }
-
                 continue;
             }
-
             /**
-             * Array ($in)
+             * Example:
+             * role=ADMIN,HR
+             * =>
+             * {
+             *   role:{
+             *      $in:["ADMIN","HR"]
+             *   }
+             * }
              */
-
             if (arrayFields.has(field)) {
-
                 const values =
                     this.getArray(field);
 
                 if (values.length) {
-
                     filters[field] = {
                         $in: values,
                     };
-
-                }
-
-                continue;
-            }
-
-            /**
-             * ObjectId
-             */
-
-            if (objectIdFields.has(field)) {
-
-                const id =
-                    this.getString(field);
-
-                if (Types.ObjectId.isValid(id)) {
-                    filters[field] = new Types.ObjectId(id);
                 }
                 continue;
             }
-
             /**
-             * Enum
-             */
-
-            if (enumFields.has(field)) {
-
-                const enumValue =
-                    this.getString(field);
-
-                if (enumValue) {
-                    filters[field] = enumValue;
-                }
-
-                continue;
-            }
-
-            /**
-             * Normal String / Nested Field
-             *
              * Example:
-             *
-             * address.city
-             * address.country
+             * userId=64abc...
+             * =>
+             * ObjectId("64abc...")
              */
-
-            filters[field] = value;
-
+            if (objectIdFields.has(field)) {
+                if (
+                    Types.ObjectId.isValid(value)
+                ) {
+                    filters[field] =
+                        new Types.ObjectId(value);
+                }
+                continue;
+            }
+            /**
+             * Example:
+             * status=ACTIVE
+             * =>
+             * {
+             *   status:"ACTIVE"
+             * }
+             */
+            if (enumFields.has(field)) {
+                filters[field] =
+                    value;
+                continue;
+            }
+            // normal string or nested field
+            filters[field] =
+                value;
         }
-
-        if (Object.keys(filters).length) {
+        if (
+            Object.keys(filters).length
+        ) {
             this.addFilter(filters);
         }
-
         return this;
-
     }
-
-    //range filter based on range able fields
+    /* ============================================================
+                                Range
+    ============================================================ */
+    /**
+     * Filter data within numeric range
+     * Example:
+     * minSalary=5000
+     * maxSalary=10000
+     * =>
+     * {
+     *   salary:{
+     *      $gte:5000,
+     *      $lte:10000
+     *   }
+     * }
+     */
     range() {
         const ranges =
             this.config.rangeFields ?? [];
 
-        const filters: Record<
-            string,
-            unknown
-        > = {};
+        const filters:
+            Record<string, unknown> = {};
 
         for (const range of ranges) {
+            const fieldName =
+                range.field.charAt(0).toUpperCase() +
+                range.field.slice(1);
             const min =
                 this.getNumber(
-                    range.minKey ?? `min${range.field}`
+                    range.minKey ?? `min${fieldName}`
                 );
-
             const max =
                 this.getNumber(
-                    range.maxKey ?? `max${range.field}`
+                    range.maxKey ?? `max${fieldName}`
                 );
-
             if (
                 min === undefined &&
                 max === undefined
             ) {
                 continue;
             }
-
-            filters[range.field] = {};
+            const condition:
+                Record<string, number> = {};
 
             if (min !== undefined) {
-                filters[range.field] = {
-                    ...filters[range.field] as object,
-                    $gte: min,
-                };
+                condition.$gte = min;
             }
 
             if (max !== undefined) {
-                filters[range.field] = {
-                    ...filters[range.field] as object,
-                    $lte: max,
-                };
+                condition.$lte = max;
             }
+
+            filters[range.field] =
+                condition;
         }
 
         if (Object.keys(filters).length) {
@@ -309,14 +378,26 @@ export class QueryBuilder<T> {
         }
         return this;
     }
-
-    // sort based on sortable fields
+    /* ============================================================
+                                Sort
+    ============================================================ */
+    /**
+     * Sort data by allowed fields
+     * Example:
+     * sort=-createdAt,name
+     * =>
+     * {
+     *   createdAt:-1,
+     *   name:1
+     * }
+     */
     sort() {
+
         const sortableFields =
             this.config.sortableFields ?? [];
 
         const sort =
-            this.getString("sort");
+            this.getString(SORT_QUERY_KEY);
 
         if (!sort) {
             if (this.config.defaultSort) {
@@ -328,14 +409,14 @@ export class QueryBuilder<T> {
             return this;
         }
 
-        const sorts = sort
-            .split(",")
-            .map(item => item.trim())
-            .filter(Boolean);
+        const sorts =
+            sort
+                .split(",")
+                .map(item => item.trim())
+                .filter(Boolean);
 
         const validSorts =
             sorts.filter(item => {
-
                 const field =
                     item.startsWith("-")
                         ? item.slice(1)
@@ -344,24 +425,31 @@ export class QueryBuilder<T> {
             });
 
         if (validSorts.length) {
-
             this.modelQuery =
                 this.modelQuery.sort(
                     validSorts.join(" ")
                 );
-
         }
         return this;
     }
-
-    //paginate based on page and limit
+    /* ============================================================
+                                Pagination
+    ============================================================ */
+    /**
+     * Apply pagination
+     * Example:
+     * page=2&limit=10
+     *
+     * =>
+     *
+     * skip=10
+     * limit=10
+     */
     paginate() {
         const page =
-            this.getNumber("page");
-
+            this.getNumber(PAGE_QUERY_KEY);
         const limit =
-            this.getNumber("limit");
-
+            this.getNumber(LIMIT_QUERY_KEY);
         this.page =
             page && page > 0
                 ? page
@@ -377,41 +465,50 @@ export class QueryBuilder<T> {
                 DEFAULT_LIMIT;
 
         this.skip =
-            (this.page - 1) * this.limit;
+            (this.page - 1) *
+            this.limit;
 
         this.modelQuery =
             this.modelQuery
                 .skip(this.skip)
                 .limit(this.limit);
+
         return this;
     }
-
-    // select fields based on selectable fields
+    /* ============================================================
+                                Select Fields
+    ============================================================ */
+    /**
+     * Select allowed fields
+     * Example:
+     * fields=name,email
+     * =>
+     * {
+     *   name:1,
+     *   email:1
+     * }
+     */
     fields() {
-
         const selectableFields =
             this.config.selectableFields ?? [];
 
         const fields =
-            this.getString("fields");
+            this.getString(FIELDS_QUERY_KEY);
 
         if (!fields) {
             return this;
         }
-
         const selected =
             fields
                 .split(",")
                 .map(item => item.trim())
                 .filter(Boolean);
-
         const validFields =
             selected.filter(field =>
                 selectableFields.includes(field)
             );
 
         if (validFields.length) {
-
             this.modelQuery =
                 this.modelQuery.select(
                     validFields.join(" ")
@@ -419,12 +516,19 @@ export class QueryBuilder<T> {
         }
         return this;
     }
-
-    // populate fields based on populate options
+    /* ============================================================
+                                Populate
+    ============================================================ */
+    /**
+     * Populate mongoose references
+     * Example:
+     * populate:user
+     * =>
+     * User document attached
+     */
     populate() {
         const populates =
             this.config.populate ?? [];
-
         if (!populates.length) {
             return this;
         }
@@ -435,28 +539,46 @@ export class QueryBuilder<T> {
         }
         return this;
     }
-
-    // enable lean query
-    lean(enable = true) {
+    /* ============================================================
+                                Lean
+    ============================================================ */
+    /**
+     * Convert mongoose document into plain object
+     * Example:
+     * Document
+     * =>
+     * Plain Object
+     */
+    lean(
+        enable = true
+    ) {
         if (enable) {
             this.modelQuery =
                 this.modelQuery.lean();
         }
         return this;
     }
-
-    // get meta information about the query (pagination, total count, etc.)
+    /* ============================================================
+                                Meta
+    ============================================================ */
+    /**
+     * Generate pagination metadata
+     * Example:
+     * total=100
+     * limit=10
+     * =>
+     * totalPages=10
+     */
     async getMeta(): Promise<PaginationMeta> {
-
         const total =
-            await this.baseQuery
-                .model
-                .countDocuments(
-                    this.internalFilter
-                );
+            await this.model.countDocuments(
+                this.internalFilter
+            );
 
         const totalPages =
-            Math.ceil(total / this.limit);
+            Math.ceil(
+                total / this.limit
+            );
 
         return {
             page: this.page,
@@ -478,14 +600,23 @@ export class QueryBuilder<T> {
                     : null,
         };
     }
-
+    /* ============================================================
+                                Execute
+    ============================================================ */
+    /**
+     * Execute query and return data with meta
+     * Example:
+     * {
+     *   meta:{},
+     *   data:[]
+     * }
+     */
     async execute() {
         const [data, meta] =
             await Promise.all([
                 this.modelQuery,
                 this.getMeta(),
             ]);
-
         return {
             meta,
             data,
