@@ -7,6 +7,7 @@ export interface RangeFilterConfig {
     field: string;
     minKey?: string;
     maxKey?: string;
+    type?: "number" | "date";
 }
 export type QueryField<T> = Extract<keyof T, string> | string;
 

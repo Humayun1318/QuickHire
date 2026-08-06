@@ -136,6 +136,24 @@ export class QueryBuilder<T> {
             .filter(Boolean);
     }
     /**
+    * fromDate=2025-01-01
+    * =>
+    * Date("2025-01-01")
+    */
+    private getDate(
+        key: string
+    ): Date | undefined {
+        const value = this.getString(key);
+        if (!value) {
+            return undefined;
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return undefined;
+        }
+        return date;
+    }
+    /**
      * Merge filter and apply mongoose query
      * Example:
      * {
@@ -341,30 +359,55 @@ export class QueryBuilder<T> {
             Record<string, unknown> = {};
 
         for (const range of ranges) {
+
             const fieldName =
                 range.field.charAt(0).toUpperCase() +
                 range.field.slice(1);
+
+            const isDate =
+                range.type === "date";
+
+            const defaultMinKey =
+                isDate
+                    ? `start${fieldName}`
+                    : `min${fieldName}`;
+
+            const defaultMaxKey =
+                isDate
+                    ? `end${fieldName}`
+                    : `max${fieldName}`;
+
             const min =
-                this.getNumber(
-                    range.minKey ?? `min${fieldName}`
-                );
+                isDate
+                    ? this.getDate(
+                        range.minKey ?? defaultMinKey
+                    )
+                    : this.getNumber(
+                        range.minKey ?? defaultMinKey
+                    );
+
             const max =
-                this.getNumber(
-                    range.maxKey ?? `max${fieldName}`
-                );
+                isDate
+                    ? this.getDate(
+                        range.maxKey ?? defaultMaxKey
+                    )
+                    : this.getNumber(
+                        range.maxKey ?? defaultMaxKey
+                    );
+
             if (
                 min === undefined &&
                 max === undefined
             ) {
                 continue;
             }
+
             const condition:
-                Record<string, number> = {};
+                Record<string, number | Date> = {};
 
             if (min !== undefined) {
                 condition.$gte = min;
             }
-
             if (max !== undefined) {
                 condition.$lte = max;
             }
@@ -376,6 +419,7 @@ export class QueryBuilder<T> {
         if (Object.keys(filters).length) {
             this.addFilter(filters);
         }
+
         return this;
     }
     /* ============================================================
