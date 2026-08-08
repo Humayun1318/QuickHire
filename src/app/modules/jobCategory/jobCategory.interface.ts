@@ -1,5 +1,3 @@
-
-
 import { Document, Model, Types } from 'mongoose';
 
 export interface IJobCategory {

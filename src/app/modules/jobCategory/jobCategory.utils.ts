@@ -1,7 +1,6 @@
 // Tree and breadcrumb utilities live here — not in service —
 // because they are pure data-transformation functions with no
 // business rules or DB calls. Keeps the service layer clean.
-
 import { JobCategory } from './jobCategory.models';
 import {
   IBreadcrumbItem,

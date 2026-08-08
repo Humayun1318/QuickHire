@@ -1,5 +1,3 @@
-
-
 export const JOB_NOT_FOUND  = 'Job listing not found';
 export const JOB_NOT_OWNED  =
   'You do not have permission to modify this job listing';

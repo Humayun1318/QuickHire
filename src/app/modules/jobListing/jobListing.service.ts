@@ -1,5 +1,3 @@
-
-
 import httpStatus from 'http-status-codes';
 import {
   JOB_NOT_FOUND,

@@ -3,7 +3,6 @@
 // from incoming URL query params.
 // Kept in utils (not service) because it is pure transformation logic
 // with no DB calls or business rules.
-
 import { Types } from 'mongoose';
 import { JobStatus } from './jobListing.constants';
 import { IJobListingQuery } from './jobListing.interface';

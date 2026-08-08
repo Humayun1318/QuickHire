@@ -1,5 +1,3 @@
-
-
 import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
 import { sendResponse }        from '../../utils/sendResponse';
