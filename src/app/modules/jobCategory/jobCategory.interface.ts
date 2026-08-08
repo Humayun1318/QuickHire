@@ -13,6 +13,7 @@ export interface IJobCategory {
   // Cached count — incremented when job is published, decremented on close/delete
   // Avoids expensive countDocuments() on every category list render
   jobCount:  number;
+  depth: number;
   isActive:  boolean;
   createdAt?: Date;
   updatedAt?: Date;

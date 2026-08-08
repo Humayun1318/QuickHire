@@ -1,4 +1,3 @@
-
 import { Schema, model } from 'mongoose';
 import {
     IJobCategoryDocument,
@@ -28,20 +27,24 @@ const jobCategorySchema = new Schema<IJobCategoryDocument, IJobCategoryModel>(
         },
 
         // Self-referencing FK — null for root categories
-        // Using Schema.Types.ObjectId with ref to same model enables
-        // .populate('parentId') to resolve parent category details
         parentId: {
             type: Schema.Types.ObjectId,
             ref: 'JobCategory',
             default: null,
         },
 
+        // Depth of category in hierarchy — root = 0, child = 1, grandchild = 2, etc.
+        depth: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
         // Cached counter — avoids countDocuments() on every category list render
-        // Maintained via increment/decrement in jobListing service
         jobCount: {
             type: Number,
             default: 0,
-            min: 0, // prevent negative counts from race conditions
+            min: 0,
         },
 
         isActive: {
@@ -65,14 +68,10 @@ const jobCategorySchema = new Schema<IJobCategoryDocument, IJobCategoryModel>(
 // Indexes
 // ─────────────────────────────────────────────────────────────
 
-// slug is the primary public lookup key (/categories/frontend)
 jobCategorySchema.index({ slug: 1 });
 
-// parentId index — primary query for tree building: find({ parentId: null })
-// and find({ parentId: <id> }) for children
-jobCategorySchema.index({ parentId: 1 });
-
-// Compound: active root categories sorted — homepage category menu query
+// below already covers plain `{ parentId }` lookups as a left-prefix, so it
+// was just extra write cost for nothing.
 jobCategorySchema.index({ parentId: 1, isActive: 1, jobCount: -1 });
 
 // ─────────────────────────────────────────────────────────────
@@ -85,14 +84,16 @@ jobCategorySchema.statics.isCategoryExists = async function (
     return this.findOne({ _id: categoryId, isActive: true });
 };
 
-// Checks if a name is taken, optionally excluding a specific document
-// Used for both create (no excludeId) and update (pass current doc _id)
 jobCategorySchema.statics.isCategoryNameTaken = async function (
     name: string,
     excludeId?: string,
 ): Promise<boolean> {
+    // Escape regex special chars before building the pattern — a name like
+    // "C++ (Backend)" would otherwise break the regex or match unintended
+    // documents.
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const query: Record<string, unknown> = {
-        name: { $regex: new RegExp(`^${name}$`, 'i') }, // case-insensitive match
+        name: { $regex: new RegExp(`^${escaped}$`, 'i') },
     };
     if (excludeId) {
         query._id = { $ne: excludeId };

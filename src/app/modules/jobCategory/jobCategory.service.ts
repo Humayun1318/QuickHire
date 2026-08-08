@@ -13,40 +13,51 @@ import {
 } from './jobCategory.utils';
 import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
+import { Types } from 'mongoose';
 
 // ─────────────────────────────────────────────────────────────
 // Create — admin only
 // ─────────────────────────────────────────────────────────────
+const createCategory = async (
+  payload: Pick<IJobCategory, 'name' | 'icon' | 'parentId'>,
+) => {
+  const name = payload.name?.trim();
 
-const createCategory = async (payload: Partial<IJobCategory>) => {
-  // Prevent duplicate names (case-insensitive)
-  const nameTaken = await JobCategory.isCategoryNameTaken(payload.name!);
+  const nameTaken = await JobCategory.isCategoryNameTaken(name);
   if (nameTaken) {
     throw new AppError(HTTP_STATUS_CODE.CONFLICT, CATEGORY_ALREADY_EXISTS);
   }
 
-  // Validate parentId exists and enforce max depth
+  let depth = 0;
+
   if (payload.parentId) {
-    const parent = await JobCategory.isCategoryExists(
-      payload.parentId.toString(),
-    );
+    // Added isActive: true — previously a child could be created under a
+    // soft-deleted parent.
+    const parent = await JobCategory.findOne({
+      _id: payload.parentId,
+      isActive: true,
+    })
+      .select('depth')
+      .lean();
+
     if (!parent) {
-      throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, 'Parent category not found');
+      throw new AppError(
+        HTTP_STATUS_CODE.NOT_FOUND,
+        'Parent category not found',
+      );
     }
 
-
-    // Depth check: walk up from parent to root, count levels
-    // If parent is already at depth MAX-1, this child would exceed MAX
-    const breadcrumb = await buildBreadcrumb(payload.parentId.toString());
-    if (breadcrumb.length >= MAX_CATEGORY_DEPTH) {
+    if (parent.depth + 1 > MAX_CATEGORY_DEPTH) {
       throw new AppError(
         HTTP_STATUS_CODE.BAD_REQUEST,
         `Category nesting cannot exceed ${MAX_CATEGORY_DEPTH} levels`,
       );
     }
+
+    depth = parent.depth + 1;
   }
 
-  return JobCategory.create(payload);
+  return JobCategory.create({ ...payload, name, depth });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -120,24 +131,67 @@ const updateCategory = async (
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
-  // If name is changing, check it isn't taken by another category
-  if (payload.name && payload.name !== category.name) {
+  // Only these three fields are meant to be editable here. jobCount,
+  // isActive and depth are managed elsewhere (job-listing service /
+  // deleteCategory) and shouldn't be settable through a plain update —
+  const { name, icon, parentId } = payload;
+
+  if (name && name.trim() !== category.name) {
     const nameTaken = await JobCategory.isCategoryNameTaken(
-      payload.name,
+      name.trim(),
       categoryId,
     );
     if (nameTaken) {
       throw new AppError(HTTP_STATUS_CODE.CONFLICT, CATEGORY_ALREADY_EXISTS);
     }
+    category.name = name.trim(); // slug regenerates in pre('save') below
   }
 
-  const updated = await JobCategory.findByIdAndUpdate(
-    categoryId,
-    { $set: payload },
-    { new: true, runValidators: true },
-  );
+  if (icon !== undefined) {
+    category.icon = icon;
+  }
 
-  return updated;
+  if (parentId !== undefined && String(parentId) !== String(category.parentId)) {
+    if (String(parentId) === String(category._id)) {
+      throw new AppError(
+        HTTP_STATUS_CODE.BAD_REQUEST,
+        'A category cannot be its own parent',
+      );
+    }
+
+    if (parentId === null) {
+      category.parentId = null;
+      category.depth = 0;
+    } else {
+      const parent = await JobCategory.findOne({
+        _id: parentId,
+        isActive: true,
+      })
+        .select('depth')
+        .lean();
+
+      if (!parent) {
+        throw new AppError(
+          HTTP_STATUS_CODE.NOT_FOUND,
+          'Parent category not found',
+        );
+      }
+
+      if (parent.depth + 1 > MAX_CATEGORY_DEPTH) {
+        throw new AppError(
+          HTTP_STATUS_CODE.BAD_REQUEST,
+          `Category nesting cannot exceed ${MAX_CATEGORY_DEPTH} levels`,
+        );
+      }
+
+      category.parentId = parent._id as Types.ObjectId;
+      category.depth = parent.depth + 1;
+    }
+  }
+
+  await category.save();
+
+  return category;
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -151,7 +205,6 @@ const deleteCategory = async (categoryId: string) => {
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
-  // Prevent deleting a parent that still has children
   const childCount = await JobCategory.countDocuments({
     parentId: categoryId,
     isActive: true,
@@ -160,7 +213,6 @@ const deleteCategory = async (categoryId: string) => {
     throw new AppError(HTTP_STATUS_CODE.BAD_REQUEST, CATEGORY_HAS_CHILDREN);
   }
 
-  // Guard: cannot delete if jobs are actively using this category
   if (category.jobCount > 0) {
     throw new AppError(
       HTTP_STATUS_CODE.BAD_REQUEST,
