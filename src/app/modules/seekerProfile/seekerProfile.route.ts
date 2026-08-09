@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { seekerProfileController } from './seekerProfile.controller';
 import { seekerProfileValidation } from './seekerProfile.validation';
 import { UserRole } from '../user/user.interface';
@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   '/create',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerProfileValidation.createSeekerProfileSchema),
+  validateRequestBody(seekerProfileValidation.createSeekerProfileSchema),
   seekerProfileController.createSeekerProfile,
 );
 
@@ -33,7 +33,7 @@ router.get(
 router.patch(
   '/update',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerProfileValidation.updateSeekerProfileSchema),
+  validateRequestBody(seekerProfileValidation.updateSeekerProfileSchema),
   seekerProfileController.updateSeekerProfile,
 );
 

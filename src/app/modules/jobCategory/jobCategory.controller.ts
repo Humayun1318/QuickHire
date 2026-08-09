@@ -6,6 +6,7 @@ import catchAsync from '../../utils/catchAsync';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 const createCategory = catchAsync(async (req: Request, res: Response) => {
+
   const result = await jobCategoryService.createCategory(req.body);
 
   sendResponse(res, {
@@ -16,8 +17,8 @@ const createCategory = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getAllCategories = catchAsync(async (_req: Request, res: Response) => {
-  const result = await jobCategoryService.getAllCategories();
+const getAllCategories = catchAsync(async (req: Request, res: Response) => {
+  const result = await jobCategoryService.getAllCategories(req.query);
 
   sendResponse(res, {
     statusCode: HTTP_STATUS_CODE.OK,

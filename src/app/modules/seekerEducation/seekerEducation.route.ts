@@ -1,6 +1,6 @@
 import express from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { seekerEducationController } from './seekerEducation.controller';
 import { seekerEducationValidation } from './seekerEducation.validation';
 import { UserRole } from '../user/user.interface';
@@ -10,7 +10,7 @@ const router = express.Router();
 router.post(
   '/create',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerEducationValidation.createEducationSchema),
+  validateRequestBody(seekerEducationValidation.createEducationSchema),
   seekerEducationController.createEducation,
 );
 
@@ -23,7 +23,7 @@ router.get(
 router.patch(
   '/update/:educationId',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerEducationValidation.updateEducationSchema),
+  validateRequestBody(seekerEducationValidation.updateEducationSchema),
   seekerEducationController.updateEducation,
 );
 

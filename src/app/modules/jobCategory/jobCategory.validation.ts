@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { queryBuilderSchema, queryNumber } from '../../shared/validation/queryBuilderSchema';
 
+const objectIdRegex = /^[a-f\d]{24}$/i;
 const createCategorySchema = z.object({
     name: z
         .string()
@@ -10,7 +12,7 @@ const createCategorySchema = z.object({
     // parentId is a MongoDB ObjectId string
     parentId: z
         .string()
-        .regex(/^[a-f\d]{24}$/i, 'Invalid parent category ID')
+        .regex(objectIdRegex, 'Invalid parent category ID')
         .optional()
         .nullable(),
 })
@@ -22,7 +24,7 @@ const updateCategorySchema = z
         icon: z.string().trim().optional(),
         parentId: z
             .string()
-            .regex(/^[a-f\d]{24}$/i, 'Invalid parent category ID')
+            .regex(objectIdRegex, 'Invalid parent category ID')
             .optional()
             .nullable(),
         isActive: z.boolean().optional(),
@@ -30,7 +32,34 @@ const updateCategorySchema = z
     .partial()
 
 
+export const getCategoryQuerySchema =
+    queryBuilderSchema
+        .extend({
+            isActive: z
+                .enum(['true', 'false'])
+                .optional(),
+
+            parentId: z
+                .string()
+                .trim()
+                .regex(
+                    objectIdRegex,
+                    'Invalid parent category ID',
+                )
+                .optional(),
+
+            depth: queryNumber.optional(),
+            jobCount: queryNumber.optional(),
+            minDepth: queryNumber.optional(),
+            maxDepth: queryNumber.optional(),
+            minJobCount: queryNumber.optional(),
+            maxJobCount: queryNumber.optional(),
+        })
+        .strict();
+
+
 export const jobCategoryValidation = {
     createCategorySchema,
     updateCategorySchema,
+    getCategoryQuerySchema
 };

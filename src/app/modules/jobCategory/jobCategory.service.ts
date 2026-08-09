@@ -13,6 +13,9 @@ import {
 import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import { Types } from 'mongoose';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { jobCategoryBuilderConfig } from './jobCategory.builder.config';
+
 
 // ─────────────────────────────────────────────────────────────
 // Create — admin only
@@ -62,11 +65,29 @@ const createCategory = async (
 // ─────────────────────────────────────────────────────────────
 // Get all as flat list — admin panel
 // ─────────────────────────────────────────────────────────────
+const getAllCategories = async (query: Record<string, unknown>) => {
+  const queryParams = {
+    ...query,
+    isActive: query.isActive ?? true,
+  };
 
-const getAllCategories = async () => {
-  return JobCategory.find({ isActive: true })
-    .populate('parentId', 'name slug') // show parent name for context
-    .sort({ name: 1 });
+  const { data, meta } = await new QueryBuilder(
+    JobCategory,
+    JobCategory.find(),
+    queryParams,
+    jobCategoryBuilderConfig,
+  )
+    .search()
+    .filter()
+    .range()
+    .sort()
+    .paginate()
+    .fields()
+    .populate()
+    .lean()
+    .execute();
+
+  return { results: data, meta };
 };
 
 // ─────────────────────────────────────────────────────────────

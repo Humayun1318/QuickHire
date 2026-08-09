@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import { authController } from './auth.controller';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from '../user/user.interface';
@@ -11,14 +11,14 @@ const router = Router();
 
 router.post(
   '/register',
-  validateRequest(createUserZodSchema),
+  validateRequestBody(createUserZodSchema),
   authController.createUser,
 );
 
 // Authentication routes________________________________
 router.post(
   '/login',
-  validateRequest(authValidation.loginSchema),
+  validateRequestBody(authValidation.loginSchema),
   authController.createAuth,
 );
 

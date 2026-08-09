@@ -16,6 +16,7 @@ export interface FilterConfig {
     filterableFields?: QueryField<any>[];
     sortableFields?: QueryField<any>[];
     selectableFields?: QueryField<any>[];
+    numberFields?: QueryField<any>[];
     booleanFields?: QueryField<any>[];
     objectIdFields?: QueryField<any>[];
     arrayFields?: QueryField<any>[];

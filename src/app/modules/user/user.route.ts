@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { userController } from './user.controller';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { createUserZodSchema } from './user.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from './user.interface';

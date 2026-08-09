@@ -1,6 +1,6 @@
 import express from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody, validateRequestQuery } from '../../middlewares/validateRequest';
 import { jobCategoryController } from './jobCategory.controller';
 import { jobCategoryValidation } from './jobCategory.validation';
 import { UserRole } from '../user/user.interface';
@@ -27,20 +27,21 @@ router.get('/:categoryId/children', jobCategoryController.getChildCategories);
 router.get(
     '/',
     checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+    validateRequestQuery(jobCategoryValidation.getCategoryQuerySchema),
     jobCategoryController.getAllCategories,
 );
 
 router.post(
     '/',
     checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequest(jobCategoryValidation.createCategorySchema),
+    validateRequestBody(jobCategoryValidation.createCategorySchema),
     jobCategoryController.createCategory,
 );
 
 router.patch(
     '/:categoryId',
     checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequest(jobCategoryValidation.updateCategorySchema),
+    validateRequestBody(jobCategoryValidation.updateCategorySchema),
     jobCategoryController.updateCategory,
 );
 

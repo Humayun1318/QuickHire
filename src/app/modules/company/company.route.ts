@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { companyController } from './company.controller';
 import { companyValidation } from './company.validation';
 import { UserRole } from '../user/user.interface';
@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   '/',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(companyValidation.createCompanySchema),
+  validateRequestBody(companyValidation.createCompanySchema),
   companyController.createCompany,
 );
 
@@ -25,7 +25,7 @@ router.get('/', companyController.getSingleCompany);
 router.patch(
   '/:companyId',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(companyValidation.updateCompanySchema),
+  validateRequestBody(companyValidation.updateCompanySchema),
   companyController.updateCompany,
 );
 
@@ -40,7 +40,7 @@ router.delete(
 router.patch(
   '/:companyId/verification',
   checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-  validateRequest(companyValidation.updateVerificationSchema),
+  validateRequestBody(companyValidation.updateVerificationSchema),
   companyController.updateVerificationStatus,
 );
 

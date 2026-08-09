@@ -45,6 +45,9 @@ export class QueryBuilder<T> {
     /* ============================================================
                                 Helpers
     ============================================================ */
+    private getValue(key: string): unknown {
+        return this.queryParams[key];
+    }
     /**
          * Get string query parameter
          * Example:
@@ -57,8 +60,7 @@ export class QueryBuilder<T> {
     private getString(
         key: string
     ): string {
-        const value =
-            this.queryParams[key];
+        const value = this.getValue(key);
 
         return typeof value === "string"
             ? value.trim()
@@ -67,29 +69,34 @@ export class QueryBuilder<T> {
     /**
          * Convert query value into number
          * Example:
-         *
          * page="10"
-         *
          * =>
-         *
          * 10
     */
-    private getNumber(
-        key: string
-    ): number | undefined {
-        const value =
-            this.getString(key);
+    private getNumber(key: string): number | undefined {
+        const value = this.getValue(key);
 
-        if (!value) {
+        if (typeof value === 'number') {
+            return Number.isFinite(value)
+                ? value
+                : undefined;
+        }
+
+        if (typeof value !== 'string') {
             return undefined;
         }
-        const number =
-            Number(value);
 
-        if (Number.isNaN(number)) {
+        const normalized = value.trim();
+
+        if (!normalized) {
             return undefined;
         }
-        return number;
+
+        const parsed = Number(normalized);
+
+        return Number.isFinite(parsed)
+            ? parsed
+            : undefined;
     }
     /**
      * Convert query value into boolean
@@ -101,17 +108,27 @@ export class QueryBuilder<T> {
      *
      * true
      */
-    private getBoolean(
-        key: string
-    ): boolean | undefined {
-        const value =
-            this.getString(key);
-        if (value === "true") {
+    private getBoolean(key: string): boolean | undefined {
+        const value = this.getValue(key);
+
+        if (typeof value === 'boolean') {
+            return value;
+        }
+
+        if (typeof value !== 'string') {
+            return undefined;
+        }
+
+        const normalized = value.trim().toLowerCase();
+
+        if (normalized === 'true') {
             return true;
         }
-        if (value === "false") {
+
+        if (normalized === 'false') {
             return false;
         }
+
         return undefined;
     }
     /**
@@ -140,18 +157,28 @@ export class QueryBuilder<T> {
     * =>
     * Date("2025-01-01")
     */
-    private getDate(
-        key: string
-    ): Date | undefined {
-        const value = this.getString(key);
-        if (!value) {
+    private getDate(key: string): Date | undefined {
+        const value = this.getValue(key);
+
+        if (value instanceof Date) {
+            return isNaN(value.getTime()) ? undefined : value;
+        }
+
+        if (typeof value !== 'string') {
             return undefined;
         }
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
+
+        const normalized = value.trim();
+
+        if (!normalized) {
             return undefined;
         }
-        return date;
+
+        const date = new Date(normalized);
+
+        return isNaN(date.getTime())
+            ? undefined
+            : date;
     }
     /**
      * Merge filter and apply mongoose query
@@ -248,15 +275,23 @@ export class QueryBuilder<T> {
             new Set(
                 this.config.enumFields ?? []
             );
+        const numberFields =
+            new Set(
+                this.config.numberFields ?? []
+            );
 
         const filters:
             Record<string, unknown> = {};
 
         for (const field of filterableFields) {
-            const value =
-                this.getString(field);
 
-            if (!value) {
+            if (numberFields.has(field)) {
+                const value = this.getNumber(field);
+
+                if (value !== undefined) {
+                    filters[field] = value;
+                }
+
                 continue;
             }
             /**
@@ -303,12 +338,16 @@ export class QueryBuilder<T> {
              * ObjectId("64abc...")
              */
             if (objectIdFields.has(field)) {
+                const value = this.getString(field);
+
                 if (
+                    value &&
                     Types.ObjectId.isValid(value)
                 ) {
                     filters[field] =
                         new Types.ObjectId(value);
                 }
+
                 continue;
             }
             /**
@@ -319,14 +358,16 @@ export class QueryBuilder<T> {
              *   status:"ACTIVE"
              * }
              */
+            const value = this.getString(field);
             if (enumFields.has(field)) {
                 filters[field] =
                     value;
                 continue;
             }
             // normal string or nested field
-            filters[field] =
-                value;
+            if (value) {
+                filters[field] = value;
+            }
         }
         if (
             Object.keys(filters).length

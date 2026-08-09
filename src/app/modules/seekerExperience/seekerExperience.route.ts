@@ -1,6 +1,6 @@
 import express from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { seekerExperienceController } from './seekerExperience.controller';
 import { seekerExperienceValidation } from './seekerExperience.validation';
 import { UserRole } from '../user/user.interface';
@@ -10,7 +10,7 @@ const router = express.Router();
 router.post(
   '/create',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerExperienceValidation.createExperienceSchema),
+  validateRequestBody(seekerExperienceValidation.createExperienceSchema),
   seekerExperienceController.createExperience,
 );
 
@@ -23,7 +23,7 @@ router.get(
 router.patch(
   '/update/:experienceId',
   checkAuth(UserRole.SEEKER),
-  validateRequest(seekerExperienceValidation.updateExperienceSchema),
+  validateRequestBody(seekerExperienceValidation.updateExperienceSchema),
   seekerExperienceController.updateExperience,
 );
 

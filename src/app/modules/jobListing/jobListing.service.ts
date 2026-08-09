@@ -67,35 +67,35 @@ const createJob = async (
 // Public search — paginated, filtered, sorted
 // ─────────────────────────────────────────────────────────────
 
-const searchJobs = async (queryParams: IJobListingQuery) => {
-  const { filter, sort, skip, limit } = buildJobQuery(queryParams);
+// const searchJobs = async (queryParams: IJobListingQuery) => {
+//   const { filter, sort, skip, limit } = buildJobQuery(queryParams);
 
-  // Projection: if text search, include relevance score
-  const projection = queryParams.searchTerm
-    ? { score: { $meta: 'textScore' } }
-    : {};
+//   // Projection: if text search, include relevance score
+//   const projection = queryParams.searchTerm
+//     ? { score: { $meta: 'textScore' } }
+//     : {};
 
-  const [jobs, total] = await Promise.all([
-    JobListing.find(filter, projection)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate('companyId',  'name slug logo isVerified')
-      .populate('categoryId', 'name slug')
-      .lean(),
-    JobListing.countDocuments(filter),
-  ]);
+//   const [jobs, total] = await Promise.all([
+//     JobListing.find(filter, projection)
+//       .sort(sort)
+//       .skip(skip)
+//       .limit(limit)
+//       .populate('companyId',  'name slug logo isVerified')
+//       .populate('categoryId', 'name slug')
+//       .lean(),
+//     JobListing.countDocuments(filter),
+//   ]);
 
-  return {
-    jobs,
-    meta: {
-      total,
-      page:       Math.floor(skip / limit) + 1,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-};
+//   return {
+//     jobs,
+//     meta: {
+//       total,
+//       page:       Math.floor(skip / limit) + 1,
+//       limit,
+//       totalPages: Math.ceil(total / limit),
+//     },
+//   };
+// };
 
 // ─────────────────────────────────────────────────────────────
 // Get single job by ID — increment view count
@@ -157,25 +157,25 @@ const getCompanyJobs = async (
     filter.status = queryParams.status;
   }
 
-  const [jobs, total] = await Promise.all([
-    JobListing.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate('categoryId', 'name slug')
-      .lean(),
-    JobListing.countDocuments(filter),
-  ]);
+  // const [jobs, total] = await Promise.all([
+  //   JobListing.find(filter)
+  //     .sort(sort)
+  //     .skip(skip)
+  //     .limit(limit)
+  //     .populate('categoryId', 'name slug')
+  //     .lean(),
+  //   JobListing.countDocuments(filter),
+  // ]);
 
-  return {
-    jobs,
-    meta: {
-      total,
-      page:       Math.floor(skip / limit) + 1,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
+  // return {
+  //   jobs,
+  //   meta: {
+  //     total,
+  //     page:       Math.floor(skip / limit) + 1,
+  //     limit,
+  //     totalPages: Math.ceil(total / limit),
+  //   },
+  // };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ const decrementApplicationCount = async (jobId: string) => {
 
 export const jobListingService = {
   createJob,
-  searchJobs,
+  // searchJobs,
   getJobById,
   getJobBySlug,
   getCompanyJobs,

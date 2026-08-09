@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequest } from '../../middlewares/validateRequest';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { companyMemberController } from './companyMember.controller';
 import { companyMemberValidation } from './companyMember.validation';
 import { UserRole } from '../user/user.interface';
@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 router.post(
   '/',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(companyMemberValidation.addMemberSchemaValidation),
+  validateRequestBody(companyMemberValidation.addMemberSchemaValidation),
   companyMemberController.addMember,
 );
 
@@ -34,7 +34,7 @@ router.delete(
 router.patch(
   '/:memberId',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(companyMemberValidation.updateMemberRoleSchemaValidation),
+  validateRequestBody(companyMemberValidation.updateMemberRoleSchemaValidation),
   companyMemberController.updateMemberRole,
 );
 

@@ -1,6 +1,6 @@
 import express from 'express';
-import { checkAuth }           from '../../middlewares/checkAuth';
-import { validateRequest }     from '../../middlewares/validateRequest';
+import { checkAuth } from '../../middlewares/checkAuth';
+import { validateRequestBody } from '../../middlewares/validateRequest';
 import { jobListingController } from './jobListing.controller';
 import { jobListingValidation } from './jobListing.validation';
 import { UserRole } from '../user/user.interface';
@@ -12,7 +12,7 @@ const router = express.Router();
 // Search and filter — main job board
 router.get(
   '/',
-  validateRequest(jobListingValidation.jobSearchQuerySchema),
+  validateRequestBody(jobListingValidation.jobSearchQuerySchema),
   jobListingController.searchJobs,
 );
 
@@ -28,7 +28,7 @@ router.get('/:jobId', jobListingController.getJobById);
 router.post(
   '/',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(jobListingValidation.createJobSchema),
+  validateRequestBody(jobListingValidation.createJobSchema),
   jobListingController.createJob,
 );
 
@@ -36,7 +36,7 @@ router.post(
 router.patch(
   '/:jobId',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(jobListingValidation.updateJobSchema),
+  validateRequestBody(jobListingValidation.updateJobSchema),
   jobListingController.updateJob,
 );
 
@@ -44,7 +44,7 @@ router.patch(
 router.patch(
   '/:jobId/status',
   checkAuth(UserRole.EMPLOYER),
-  validateRequest(jobListingValidation.updateStatusSchema),
+  validateRequestBody(jobListingValidation.updateStatusSchema),
   jobListingController.updateJobStatus,
 );
 
