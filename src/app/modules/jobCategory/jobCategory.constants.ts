@@ -13,4 +13,4 @@ export const CATEGORY_HAS_JOBS      =
 // Maximum depth of category nesting allowed
 // Technology > Frontend > React is depth 3 — sufficient for most use cases
 // Deeper nesting complicates breadcrumb rendering and tree queries
-export const MAX_CATEGORY_DEPTH = 3;
+export const MAX_CATEGORY_DEPTH = 2;

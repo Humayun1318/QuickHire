@@ -71,6 +71,8 @@ const getAllCategories = async (query: Record<string, unknown>) => {
     isActive: query.isActive ?? true,
   };
 
+  console.log('queryParams', queryParams);
+
   const { data, meta } = await new QueryBuilder(
     JobCategory,
     JobCategory.find(),

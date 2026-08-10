@@ -9,6 +9,7 @@ export const jobCategoryBuilderConfig: FilterConfig = {
     filterableFields: [
         'isActive',
         'parentId',
+        'depth',
     ],
     numberFields: [
         "depth",
@@ -22,6 +23,7 @@ export const jobCategoryBuilderConfig: FilterConfig = {
     objectIdFields: [
         'parentId',
     ],
+    
 
     rangeFields: [
         {
