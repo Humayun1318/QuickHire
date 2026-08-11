@@ -77,7 +77,6 @@ jobCategorySchema.index({ parentId: 1, isActive: 1, jobCount: -1 });
 // ─────────────────────────────────────────────────────────────
 // Static Methods
 // ─────────────────────────────────────────────────────────────
-
 jobCategorySchema.statics.isCategoryExists = async function (
     categoryId: string,
 ): Promise<IJobCategoryDocument | null> {

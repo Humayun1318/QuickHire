@@ -8,7 +8,6 @@ export const JOB_NOT_ACTIVE =
 // ─────────────────────────────────────────────────────────────
 // Enums
 // ─────────────────────────────────────────────────────────────
-
 export enum JobType {
   FULL_TIME  = 'full-time',
   PART_TIME  = 'part-time',
@@ -22,14 +21,12 @@ export enum WorkMode {
   ONSITE = 'onsite',
   HYBRID = 'hybrid',
 }
-
 export enum SalaryCurrency {
   BDT = 'BDT',
   USD = 'USD',
   GBP = 'GBP',
   EUR = 'EUR',
 }
-
 // Status lifecycle:
 // draft → published → closed (manual)
 //                  → expired (auto, when expiresAt passes)
