@@ -15,7 +15,7 @@ const salarySchema = z
   .object({
     min:          z.number().nonnegative().optional(),
     max:          z.number().nonnegative().optional(),
-    currency:     z.nativeEnum(SalaryCurrency).default(SalaryCurrency.BDT),
+    currency:     z.enum(SalaryCurrency).default(SalaryCurrency.BDT),
     isNegotiable: z.boolean().default(true),
     isVisible:    z.boolean().default(true),
   })
@@ -54,9 +54,9 @@ const createJobSchema = z.object({
     requirements:    z.array(z.string().trim()).default([]),
     responsibilities: z.array(z.string().trim()).default([]),
     skills:          z.array(z.string().trim()).default([]),
-    type:            z.nativeEnum(JobType),
-    workMode:        z.nativeEnum(WorkMode),
-    experienceLevel: z.nativeEnum(ExperienceLevel).optional(),
+    type:            z.enum(JobType),
+    workMode:        z.enum(WorkMode),
+    experienceLevel: z.enum(ExperienceLevel).optional(),
     salary:          salarySchema.optional(),
     location:        locationSchema.optional(),
     // Employer can choose to save as draft or publish immediately
@@ -84,9 +84,9 @@ const updateJobSchema = z.object({
       requirements:    z.array(z.string().trim()).optional(),
       responsibilities: z.array(z.string().trim()).optional(),
       skills:          z.array(z.string().trim()).optional(),
-      type:            z.nativeEnum(JobType).optional(),
-      workMode:        z.nativeEnum(WorkMode).optional(),
-      experienceLevel: z.nativeEnum(ExperienceLevel).optional(),
+      type:            z.enum(JobType).optional(),
+      workMode:        z.enum(WorkMode).optional(),
+      experienceLevel: z.enum(ExperienceLevel).optional(),
       salary:          salarySchema.optional(),
       location:        locationSchema.optional(),
       expiresAt:       z.string().datetime().optional(),
@@ -100,7 +100,7 @@ const updateJobSchema = z.object({
 
 const updateStatusSchema = z.object({
   body: z.object({
-    status: z.nativeEnum(JobStatus),
+    status: z.enum(JobStatus),
   }),
 });
 
@@ -112,9 +112,9 @@ const jobSearchQuerySchema = z.object({
   query: z.object({
     searchTerm:     z.string().optional(),
     categoryId:     z.string().regex(/^[a-f\d]{24}$/i).optional(),
-    type:           z.nativeEnum(JobType).optional(),
-    workMode:       z.nativeEnum(WorkMode).optional(),
-    experienceLevel: z.nativeEnum(ExperienceLevel).optional(),
+    type:           z.enum(JobType).optional(),
+    workMode:       z.enum(WorkMode).optional(),
+    experienceLevel: z.enum(ExperienceLevel).optional(),
     city:           z.string().optional(),
     country:        z.string().optional(),
     salaryMin:      z.string().regex(/^\d+$/).optional(),
