@@ -72,12 +72,13 @@ Request
 - **Hierarchical job categories** with parent references, depth levels, slug trees, breadcrumbs, and automatic job-count rollups.
 - **Seeker profiles** with headline, bio, skills, languages, expected salary (negotiable), availability status, social links, and an auto-computed profile-completeness score.
 - **Education & experience entries** scoped to the seeker's profile, with ownership checks and transactional deletes that keep profile state consistent.
-- **Job applications** linked to a listing with resume link and cover note.
+- **Resumes** — seekers manage multiple uploaded resumes (title + file URL) with one default, ownership-restricted CRUD, and safe deletion that promotes a fallback default when the deleted resume was the default.
+- **Job applications** linked to a seeker, their resume, and a job listing — seeker-only submission with duplicate protection (one application per seeker per job), expired-job and draft-job guards, seeker withdrawal with counter rollback, and employer-side review (status, note, score) restricted to members managing that listing.
 - **Super-admin seeding** on every boot from environment variables (safe, idempotent).
 
 ### Platform / Developer Experience
 
-- **Generic `QueryBuilder<T>` engine** — one 700-line class powering search, filtering, numeric/date ranges, sorting, field selection, population, and pagination for every module. Fully documented in [`QueryBuilderDocumentation.md`](./QueryBuilderDocumentation.md) (≈2,000 lines).
+- **Generic `QueryBuilder<T>` engine** — one ~700-line class powering search, filtering (string/number/boolean/ObjectId/CSV-array), numeric/date ranges, sorting, field selection, population, and pagination for every module. Fully documented in [`QueryBuilderDocumentation.md`](./QueryBuilderDocumentation.md), rewritten to match the current implementation verbatim.
 - **CLI module scaffolder** — `npm run generateModule` interactively creates a new module directory with all standard files pre-filled.
 - **Uniform API response envelope** — `{ statusCode, success, message, data }` with a `meta` object for pagination.
 - **Zod 4 request validation** for bodies and queries, including a multipart/form-data passthrough (`req.body.data`).
@@ -191,7 +192,8 @@ QuickHire/
 │       │   ├── companyMember/         # Team roles + permission-based authorization
 │       │   ├── seekerProfile/         # Seeker profiles + completeness scoring
 │       │   ├── seekerEducation/       # Education entries per seeker
-│       │   └── seekerExperience/      # Experience entries per seeker
+│       │   ├── seekerExperience/       # Experience entries per seeker
+│       │   ├── resume/                 # Seeker resumes: CRUD, default selection, safe deletion
 │       ├── routes/index.ts            # Central registry mounting all module routers on /api/v1
 │       ├── shared/
 │       │   ├── interfaces/            # Shared types (address, socialLinks)
@@ -216,7 +218,7 @@ QuickHire/
 | --- | --- | --- |
 | `SUPER_ADMIN` | `super_admin` | Platform owner, seeded from env, full access |
 | `ADMIN` | `admin` | Platform staff: manage categories, feature jobs, verify companies, view users |
-| `SEEKER` | `seeker` | Job seekers: manage profile, education, experience, submit applications |
+| `SEEKER` | `seeker` | Job seekers: manage profile, education, experience, resumes, submit applications |
 | `EMPLOYER` | `employer` | Employers: own a company, manage members, post/manage jobs |
 
 ### Account Lifecycle
@@ -247,7 +249,8 @@ Each company has one `OWNER` and optional `ADMIN`, `HR`, `RECRUITER`, and `INTER
 | `CompanyMember` | `companyId` + `userId` pair uniqueness, team role + permission check helper |
 | `SeekerProfile` | Headline, bio, skills, languages, expected salary (amount/currency/negotiable), availability, social links, `profileCompleteness` |
 | `SeekerEducation` / `SeekerExperience` | Owned by seeker via `userId` + `profileId`, ownership guards on update/delete |
-| `Application` | `job_id` reference, name/email/resume link/cover note |
+| `Resume` | `userId` FK, title + file URL, `isDefault`, `downloadCount`, unique user-id uniqueness | (seeker-owned)
+| `Application` | `jobId` + `applicantId` + `resumeId` refs, `coverLetter`, `status` flow (`pending` → `reviewed` / `accepted` / `rejected` / `withdrawn`), `employerNote`, `score`, unique `jobId` + `applicantId` index, appliedAt/updatedAt |
 
 ## API Endpoints
 
@@ -344,10 +347,23 @@ All endpoints are prefixed with **`/api/v1`**. Endpoints marked **(public)** req
 
 | Method | Route | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/applications/create` | — | Submit an application for a job |
-| GET | `/applications` | — | List applications by job ID |
-| GET | `/applications/:id` | — | Application detail |
-| DELETE | `/applications/delete/:id` | — | Delete an application |
+| POST | `/applications` | `seeker` | Submit an application for a job (duplicate, expired, and draft guards) |
+| GET | `/applications/my-applications` | `seeker` | List own applications |
+| PATCH | `/applications/:applicationId/withdraw` | `seeker` | Withdraw own application (status → `withdrawn`, counters sync) |
+| GET | `/applications/jobs/:jobId` | `employer` | List applications for one of their job listings |
+| PATCH | `/applications/:applicationId/review` | `employer` | Employer review: status / employer note / score |
+| GET | `/applications/:applicationId` | `admin`, `super_admin` | Application detail (audit) |
+
+### Resumes — `/resumes`
+
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| POST | `/resumes/create` | `seeker` | Upload a resume (title + file URL) |
+| GET | `/resumes` | `seeker` | List own resumes |
+| GET | `/resumes/:resumeId` | `seeker` | Resume detail (ownership guard) |
+| PATCH | `/resumes/:resumeId` | `seeker` | Update title / file URL (ownership guard) |
+| DELETE | `/resumes/:resumeId` | `seeker` | Soft-delete (auto-promotes fallback default if deleted resume was default) |
+| PATCH | `/resumes/:resumeId/set-default` | `seeker` | Set this resume as the default used when applying |
 
 ## Authentication & Authorization
 

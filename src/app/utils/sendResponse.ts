@@ -22,6 +22,9 @@ interface TResponse<T> {
 
   // The actual data returned to the client (could be null for errors)
   data: T;
+
+  // Optional pagination meta (page, limit, total, totalPages, ...)
+  meta?: Record<string, unknown>;
 }
 
 /**
@@ -70,5 +73,6 @@ export const sendResponse = <T>(res: Response, data: TResponse<T>) => {
     success: data.success,
     message: data.message,
     data: data.data,
+    ...(data.meta ? { meta: data.meta } : {}),
   });
 };

@@ -1,7 +1,6 @@
-
-
 import { Router } from 'express';
 import { jobListingRoutes } from '../modules/jobListing/jobListing.route';
+import { resumeRoutes } from '../modules/resume/resume.route';
 import { ApplicationRoutes } from '../modules/Application/Application.route';
 import { userRoutes } from '../modules/user/user.route';
 import { authRoutes } from '../modules/auth/auth.route';
@@ -61,11 +60,16 @@ const moduleRoutes = [
   },
   {
     path: '/job-categories',
-    route: jobCategoryRoutes
+    route: jobCategoryRoutes,
   },
   {
     path: '/jobs',
-    route: jobListingRoutes
+    route: jobListingRoutes,
+  },
+  {
+    // Resume management — seeker-only (1:N with User & Application)
+    path: '/resumes',
+    route: resumeRoutes,
   },
 ];
 

@@ -1,18 +1,21 @@
 import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
-import { sendResponse }        from '../../utils/sendResponse';
-import { jobListingService }   from './jobListing.service';
-import {
-  IJobListingQuery,
-} from './jobListing.interface';
+import { sendResponse } from '../../utils/sendResponse';
+import { jobListingService } from './jobListing.service';
+import { IJobListingQuery } from './jobListing.interface';
 import { JobStatus } from './jobListing.constants';
 import catchAsync from '../../utils/catchAsync';
 import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
+// Validation schemas wrap fields under `body` (e.g. createJobSchema),
+// so after validateRequestBody the parsed payload lives at req.body.body.
+const unwrap = <T extends Record<string, unknown>>(body: T): T =>
+  ((body as unknown as { body?: T })?.body as T | undefined) ?? body;
+
 // POST /jobs
 // Body must include companyId — the member selects which company they're posting for
 const createJob = catchAsync(async (req: Request, res: Response) => {
-  const { companyId, ...payload } = req.body;
+  const { companyId, ...payload } = unwrap(req.body);
   const result = await jobListingService.createJob(
     getUserIdFromReq(req),
     companyId,
@@ -21,9 +24,9 @@ const createJob = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
-    success:    true,
-    message:    'Job listing created successfully',
-    data:       result,
+    success: true,
+    message: 'Job listing created successfully',
+    data: result,
   });
 });
 
@@ -35,10 +38,10 @@ const searchJobs = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Jobs retrieved successfully',
-    data:       result.jobs,
-    // meta:       result.meta,
+    success: true,
+    message: 'Jobs retrieved successfully',
+    data: result.jobs,
+    meta: result.meta,
   });
 });
 
@@ -48,9 +51,9 @@ const getJobBySlug = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Job retrieved successfully',
-    data:       result,
+    success: true,
+    message: 'Job retrieved successfully',
+    data: result,
   });
 });
 
@@ -60,9 +63,9 @@ const getJobById = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Job retrieved successfully',
-    data:       result,
+    success: true,
+    message: 'Job retrieved successfully',
+    data: result,
   });
 });
 
@@ -75,16 +78,16 @@ const getCompanyJobs = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Company jobs retrieved successfully',
-    data:       result.jobs,
-    // meta:       result.meta,
+    success: true,
+    message: 'Company jobs retrieved successfully',
+    data: result.jobs,
+    meta: result.meta,
   });
 });
 
 // PATCH /jobs/:jobId
 const updateJob = catchAsync(async (req: Request, res: Response) => {
-  const { companyId, ...payload } = req.body;
+  const { companyId, ...payload } = unwrap(req.body);
   const result = await jobListingService.updateJob(
     req.params.jobId,
     getUserIdFromReq(req),
@@ -94,9 +97,9 @@ const updateJob = catchAsync(async (req: Request, res: Response) => {
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Job updated successfully',
-    data:       result,
+    success: true,
+    message: 'Job updated successfully',
+    data: result,
   });
 });
 
@@ -105,15 +108,15 @@ const updateJobStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.updateJobStatus(
     req.params.jobId,
     getUserIdFromReq(req),
-    req.body.companyId,
-    req.body.status as JobStatus,
+    unwrap(req.body).companyId,
+    unwrap(req.body).status as JobStatus,
   );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    'Job status updated successfully',
-    data:       result,
+    success: true,
+    message: 'Job status updated successfully',
+    data: result,
   });
 });
 
@@ -122,14 +125,14 @@ const deleteJob = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.deleteJob(
     req.params.jobId,
     getUserIdFromReq(req),
-    req.body.companyId,
+    unwrap(req.body).companyId,
   );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    result.message,
-    data:       null,
+    success: true,
+    message: result.message,
+    data: null,
   });
 });
 
@@ -137,14 +140,14 @@ const deleteJob = catchAsync(async (req: Request, res: Response) => {
 const toggleFeatured = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.toggleFeatured(
     req.params.jobId,
-    req.body.isFeatured,
+    unwrap(req.body).isFeatured,
   );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    success:    true,
-    message:    `Job ${result.isFeatured ? 'featured' : 'unfeatured'} successfully`,
-    data:       result,
+    success: true,
+    message: `Job ${result.isFeatured ? 'featured' : 'unfeatured'} successfully`,
+    data: result,
   });
 });
 

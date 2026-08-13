@@ -1,4 +1,3 @@
-
 // Query builder for job search — builds MongoDB filter + sort objects
 // from incoming URL query params.
 // Kept in utils (not service) because it is pure transformation logic
@@ -9,9 +8,9 @@ import { IJobListingQuery } from './jobListing.interface';
 
 export interface IBuiltJobQuery {
   filter: Record<string, unknown>;
-  sort:   Record<string, unknown>;
-  skip:   number;
-  limit:  number;
+  sort: Record<string, unknown>;
+  skip: number;
+  limit: number;
 }
 
 export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
@@ -28,7 +27,7 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
     isFeatured,
     companyId,
     status,
-    page  = 1,
+    page = 1,
     limit = 20,
     sortBy = 'newest',
   } = params;
@@ -42,7 +41,7 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
   if (status) {
     filter.status = status;
   } else {
-    filter.status    = JobStatus.PUBLISHED;
+    filter.status = JobStatus.PUBLISHED;
     filter.expiresAt = { $gt: new Date() }; // not yet expired
   }
 
@@ -56,11 +55,11 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
     filter.categoryId = new Types.ObjectId(categoryId);
   }
 
-  if (type)            filter.type            = type;
-  if (workMode)        filter.workMode        = workMode;
+  if (type) filter.type = type;
+  if (workMode) filter.workMode = workMode;
   if (experienceLevel) filter.experienceLevel = experienceLevel;
   if (isFeatured !== undefined) filter.isFeatured = isFeatured;
-  if (companyId)       filter.companyId = new Types.ObjectId(companyId);
+  if (companyId) filter.companyId = new Types.ObjectId(companyId);
 
   // Location — case-insensitive regex for partial match
   // e.g. "dha" matches "Dhaka"
@@ -71,12 +70,17 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
     filter['location.country'] = { $regex: country, $options: 'i' };
   }
 
-  // Salary range filter — only filter on provided bounds
-  if (salaryMin !== undefined || salaryMax !== undefined) {
-    const salaryFilter: Record<string, unknown> = {};
-    if (salaryMin !== undefined) salaryFilter.$gte = salaryMin;
-    if (salaryMax !== undefined) salaryFilter.$lte = salaryMax;
-    filter['salary.min'] = salaryFilter;
+  // Salary range filter — each bound filters its own field.
+  // The previous version applied both bounds to 'salary.min', which
+  // accepted jobs whose max salary exceeded salaryMax. Fixed by
+  // keeping the bounds strictly separated:
+  //   salaryMin → salary.min must be at least this
+  //   salaryMax → salary.max must be at most this
+  if (salaryMin !== undefined) {
+    filter['salary.min'] = { $gte: salaryMin };
+  }
+  if (salaryMax !== undefined) {
+    filter['salary.max'] = { $lte: salaryMax };
   }
 
   // ── Sort ──────────────────────────────────────────────────
@@ -93,13 +97,13 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
     sort = { isFeatured: -1, createdAt: -1 };
   }
 
-  const pageNum  = Math.max(1, Number(page));
+  const pageNum = Math.max(1, Number(page));
   const limitNum = Math.min(50, Math.max(1, Number(limit))); // cap at 50
 
   return {
     filter,
     sort,
-    skip:  (pageNum - 1) * limitNum,
+    skip: (pageNum - 1) * limitNum,
     limit: limitNum,
   };
 };

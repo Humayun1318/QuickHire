@@ -4,18 +4,14 @@ import {
   CATEGORY_NOT_FOUND,
   MAX_CATEGORY_DEPTH,
 } from './jobCategory.constants';
-import { IJobCategory } from './jobCategory.interface';
+import { IJobCategory, IJobCategoryDocument } from './jobCategory.interface';
 import { JobCategory } from './jobCategory.models';
-import {
-  buildBreadcrumb,
-  buildCategoryTree,
-} from './jobCategory.utils';
+import { buildBreadcrumb, buildCategoryTree } from './jobCategory.utils';
 import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import { Types } from 'mongoose';
 import { QueryBuilder } from '../../builder/QueryBuilder';
 import { jobCategoryBuilderConfig } from './jobCategory.builder.config';
-
 
 // ─────────────────────────────────────────────────────────────
 // Create — admin only
@@ -71,8 +67,6 @@ const getAllCategories = async (query: Record<string, unknown>) => {
     isActive: query.isActive ?? true,
   };
 
-  console.log('queryParams', queryParams);
-
   const { data, meta } = await new QueryBuilder(
     JobCategory,
     JobCategory.find(),
@@ -100,7 +94,7 @@ const getAllCategories = async (query: Record<string, unknown>) => {
 const getCategoryTree = async () => {
   const all = await JobCategory.find({ isActive: true }).lean();
   // lean() returns plain objects — buildCategoryTree handles both
-  return buildCategoryTree(all as any);
+  return buildCategoryTree(all as IJobCategoryDocument[]);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -108,8 +102,9 @@ const getCategoryTree = async () => {
 // ─────────────────────────────────────────────────────────────
 
 const getRootCategories = async () => {
-  return JobCategory.find({ parentId: null, isActive: true })
-    .sort({ jobCount: -1 }); // most popular first
+  return JobCategory.find({ parentId: null, isActive: true }).sort({
+    jobCount: -1,
+  }); // most popular first
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -122,8 +117,7 @@ const getChildCategories = async (parentId: string) => {
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
-  return JobCategory.find({ parentId, isActive: true })
-    .sort({ jobCount: -1 });
+  return JobCategory.find({ parentId, isActive: true }).sort({ jobCount: -1 });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -173,7 +167,10 @@ const updateCategory = async (
     category.icon = icon;
   }
 
-  if (parentId !== undefined && String(parentId) !== String(category.parentId)) {
+  if (
+    parentId !== undefined &&
+    String(parentId) !== String(category.parentId)
+  ) {
     if (String(parentId) === String(category._id)) {
       throw new AppError(
         HTTP_STATUS_CODE.BAD_REQUEST,
