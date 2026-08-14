@@ -5,7 +5,7 @@ import {
 } from './Application.interface';
 import { ApplicationStatus } from './Application.constants';
 // ─────────────────────────────────────────────────────────────
-// Schema — matches the reference ERD:
+// Schema —
 //   applications { id, jobId, applicantId, resumeId, coverLetter,
 //                  status, employerNote, score, appliedAt, updatedAt }
 // ─────────────────────────────────────────────────────────────

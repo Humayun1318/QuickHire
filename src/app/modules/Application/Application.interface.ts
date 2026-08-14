@@ -1,7 +1,7 @@
 import { Document, Model, Types } from 'mongoose';
 import { ApplicationStatus } from './Application.constants';
 // ─────────────────────────────────────────────────────────────
-// Core interface — matches the reference ERD:
+// Core interface —
 //
 //   User        1:N Application   (applicantId)
 //   Resume      1:N Application   (resumeId)
@@ -25,6 +25,7 @@ export interface IApplication {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
 export interface IApplicationDocument extends IApplication, Document {}
 export interface IApplicationModel extends Model<IApplicationDocument> {
   // Find an application only if it belongs to this applicant —
@@ -37,6 +38,7 @@ export interface IApplicationModel extends Model<IApplicationDocument> {
   // enforces the one-application-per-seeker-per-job rule
   isAlreadyApplied(jobId: string, applicantId: string): Promise<boolean>;
 }
+
 export interface CreateApplicationDTO {
   jobId: string;
   resumeId: string;
