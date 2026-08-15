@@ -9,6 +9,7 @@ import { createUserZodSchema } from '../user/user.validation';
 
 const router = Router();
 
+// User registration route________________________________
 router.post(
   '/register',
   validateRequestBody(createUserZodSchema),
@@ -22,6 +23,7 @@ router.post(
   authController.createAuth,
 );
 
+// Token refresh and logout routes________________________
 router.post(
   '/refresh-token',
   authController.getNewAccessTokenUsingRefreshToken,
@@ -52,6 +54,7 @@ router.get(
   },
 );
 
+// Callback route for Google OAuth
 router.get('/google/callback', authController.googleCallbackController);
 //________________________________________________________
 
