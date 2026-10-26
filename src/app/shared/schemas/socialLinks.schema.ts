@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema } from 'mongoose';
 
 // Social links — validated at Zod layer, stored as plain strings
 export const socialLinksSchema = new Schema(

@@ -7,22 +7,20 @@ import {
 } from '../modules/user/user.interface';
 import { User } from '../modules/user/user.models';
 
+/**
+ * Creates the super admin account from SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD
+ * if it does not exist yet. Runs once per process after the DB connects.
+ * Failures are logged but never crash the app — the API stays usable.
+ */
 export const seedSuperAdmin = async () => {
   try {
-    const isSuperAdminExist = await User.findOne({
+    const isSuperAdminExist = await User.exists({
       email: envVars.SUPER_ADMIN_EMAIL,
     });
 
     if (isSuperAdminExist) {
-      console.log('Super Admin Already Exists!');
       return;
     }
-
-    console.log('Trying to create Super Admin...');
-
-    // password should be stored in plaintext here; the schema's pre-save hook
-    // will hash it automatically. Hashing it ourselves would double-hash and
-    // cause bcrypt.compare to fail later.
 
     const authProvider: IAuthEntry = {
       provider: AuthProvider.LOCAL,
@@ -36,14 +34,16 @@ export const seedSuperAdmin = async () => {
       name: 'Super admin',
       role: UserRole.SUPER_ADMIN,
       email: envVars.SUPER_ADMIN_EMAIL,
-      password: envVars.SUPER_ADMIN_PASSWORD, // let mongoose hash in pre-save
+      password: envVars.SUPER_ADMIN_PASSWORD, // hashed by the pre-save hook
       isVerified: true,
       auths: [authProvider],
     };
 
     await User.create(payload);
-    console.log('Super Admin Created Successfuly! \n');
+    console.log('Super admin created');
   } catch (error) {
-    console.log(error);
+    // A concurrent cold start may have created it first (duplicate key).
+    if ((error as { code?: number }).code === 11000) return;
+    console.error('Super admin seeding failed:', (error as Error).message);
   }
 };

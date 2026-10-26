@@ -7,10 +7,7 @@ import {
   WorkMode,
   DEFAULT_JOB_EXPIRY_DAYS,
 } from './jobListing.constants';
-import {
-  IJobListingDocument,
-  IJobListingModel,
-} from './jobListing.interface';
+import { IJobListingDocument, IJobListingModel } from './jobListing.interface';
 
 // ─────────────────────────────────────────────────────────────
 // Sub-schemas
@@ -18,23 +15,23 @@ import {
 
 const salarySchema = new Schema(
   {
-    min:          { type: Number, min: 0 },
-    max:          { type: Number, min: 0 },
-    currency:     {
-      type:    String,
-      enum:    Object.values(SalaryCurrency),
+    min: { type: Number, min: 0 },
+    max: { type: Number, min: 0 },
+    currency: {
+      type: String,
+      enum: Object.values(SalaryCurrency),
       default: SalaryCurrency.BDT,
     },
     isNegotiable: { type: Boolean, default: true },
     // When false, salary is hidden on the public listing — employer preference
-    isVisible:    { type: Boolean, default: true },
+    isVisible: { type: Boolean, default: true },
   },
   { _id: false, versionKey: false },
 );
 
 const locationSchema = new Schema(
   {
-    city:    { type: String, trim: true },
+    city: { type: String, trim: true },
     country: { type: String, trim: true },
   },
   { _id: false, versionKey: false },
@@ -47,70 +44,69 @@ const locationSchema = new Schema(
 const jobListingSchema = new Schema<IJobListingDocument, IJobListingModel>(
   {
     companyId: {
-      type:     Schema.Types.ObjectId,
-      ref:      'Company',
+      type: Schema.Types.ObjectId,
+      ref: 'Company',
       required: [true, 'Company ID is required'],
     },
 
     // Tracks which company member posted the job — useful for audit
     postedBy: {
-      type:     Schema.Types.ObjectId,
-      ref:      'User',
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       required: [true, 'Posted by user ID is required'],
     },
 
     categoryId: {
       type: Schema.Types.ObjectId,
-      ref:  'JobCategory',
+      ref: 'JobCategory',
     },
 
     title: {
-      type:      String,
-      required:  [true, 'Job title is required'],
-      trim:      true,
+      type: String,
+      required: [true, 'Job title is required'],
+      trim: true,
       maxlength: [150, 'Job title cannot exceed 150 characters'],
     },
 
     // Auto-generated from title + short unique suffix to handle duplicate titles
     slug: {
-      type:   String,
+      type: String,
       unique: true,
-      trim:   true,
+      trim: true,
     },
 
     description: {
-      type:     String,
+      type: String,
       required: [true, 'Job description is required'],
-      trim:     true,
+      trim: true,
     },
 
     requirements: {
-      type:    [String],
+      type: [String],
       default: [],
     },
 
     responsibilities: {
-      type:    [String],
+      type: [String],
       default: [],
     },
 
     // Normalized to lowercase for consistent search and tag-based filtering
     skills: {
-      type:    [String],
+      type: [String],
       default: [],
-      set:     (skills: string[]) =>
-        skills.map((s) => s.toLowerCase().trim()),
+      set: (skills: string[]) => skills.map((s) => s.toLowerCase().trim()),
     },
 
     type: {
-      type:     String,
-      enum:     Object.values(JobType),
+      type: String,
+      enum: Object.values(JobType),
       required: [true, 'Job type is required'],
     },
 
     workMode: {
-      type:     String,
-      enum:     Object.values(WorkMode),
+      type: String,
+      enum: Object.values(WorkMode),
       required: [true, 'Work mode is required'],
     },
 
@@ -119,54 +115,52 @@ const jobListingSchema = new Schema<IJobListingDocument, IJobListingModel>(
       enum: Object.values(ExperienceLevel),
     },
 
-    salary:   { type: salarySchema,   default: undefined },
+    salary: { type: salarySchema, default: undefined },
     location: { type: locationSchema, default: undefined },
 
     status: {
-      type:    String,
-      enum:    Object.values(JobStatus),
+      type: String,
+      enum: Object.values(JobStatus),
       default: JobStatus.DRAFT,
     },
 
     // Set by admin — featured jobs appear at top of search results
     isFeatured: {
-      type:    Boolean,
+      type: Boolean,
       default: false,
     },
 
     // Default: 30 days from creation, set in pre-save hook
     expiresAt: {
-      type:     Date,
+      type: Date,
       required: [true, 'Expiry date is required'],
+      // Defaults are applied before validation (a pre('save') hook would run
+      // after validation and the "required" check would fail first).
+      default: () =>
+        new Date(Date.now() + DEFAULT_JOB_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
     },
 
     // Cached counters — maintained via $inc in application service
     viewCount: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
 
     applicationCount: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
 
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },
   {
     timestamps: true,
     versionKey: false,
-    toJSON: {
-      transform: (_doc, ret) => {
-        delete ret.__v;
-        return ret;
-      },
-    },
   },
 );
 
@@ -178,15 +172,15 @@ const jobListingSchema = new Schema<IJobListingDocument, IJobListingModel>(
 // Weights prioritize title matches over description matches
 jobListingSchema.index(
   {
-    title:       'text',
+    title: 'text',
     description: 'text',
-    skills:      'text',
+    skills: 'text',
   },
   {
     weights: {
-      title:       10,  // title match is most relevant
-      skills:       5,  // skill match is second
-      description:  1,  // description match is least weighted
+      title: 10, // title match is most relevant
+      skills: 5, // skill match is second
+      description: 1, // description match is least weighted
     },
     name: 'job_text_search',
   },
@@ -194,8 +188,8 @@ jobListingSchema.index(
 
 // Primary public listing query: published + active + not expired, newest first
 jobListingSchema.index({
-  status:    1,
-  isActive:  1,
+  status: 1,
+  isActive: 1,
   expiresAt: 1,
   createdAt: -1,
 });
@@ -224,7 +218,7 @@ jobListingSchema.statics.isJobExists = async function (
 };
 
 jobListingSchema.statics.isOwnedByCompany = async function (
-  jobId:     string,
+  jobId: string,
   companyId: string,
 ): Promise<IJobListingDocument | null> {
   return this.findOne({ _id: jobId, companyId, isActive: true });
@@ -248,13 +242,6 @@ jobListingSchema.pre('save', function (next) {
 
     const suffix = Math.random().toString(36).substring(2, 6);
     this.slug = `${base}-${suffix}`;
-  }
-
-  // Auto-set default expiresAt on creation if not provided
-  if (this.isNew && !this.expiresAt) {
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + DEFAULT_JOB_EXPIRY_DAYS);
-    this.expiresAt = expiry;
   }
 
   next();

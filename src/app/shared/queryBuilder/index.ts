@@ -1,3 +1,3 @@
-export * from "./queryBuilder.types";
+export * from './queryBuilder.types';
 
-export * from "./queryBuilder.constants";
+export * from './queryBuilder.constants';

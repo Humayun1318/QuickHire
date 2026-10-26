@@ -60,7 +60,7 @@ const catchAsync =
      * Promise.resolve() ensures the return value is treated as a promise
      * .catch() intercepts any errors and passes them to the error handler
      */
-    Promise.resolve(fn(req, res, next)).catch((err: any) => {
+    Promise.resolve(fn(req, res, next)).catch((err: unknown) => {
       // Pass caught error to Express global error handler
       next(err);
     });

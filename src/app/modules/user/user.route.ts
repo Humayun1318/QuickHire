@@ -1,22 +1,25 @@
 import { Router } from 'express';
 import { userController } from './user.controller';
-import { validateRequestBody } from '../../middlewares/validateRequest';
-import { createUserZodSchema } from './user.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from './user.interface';
+import { validateRequestQuery } from '../../middlewares/validateRequest';
+import { userQuerySchema } from './user.validation';
 
-// Initialize Express router for user routes
 const router = Router();
 
-router.patch('/update/:id', userController.updateUser);
-router.delete('/delete/:id', userController.deleteUser);
-router.get('/:id', userController.getUserById);
+router.get('/me', checkAuth(...Object.values(UserRole)), userController.getMe);
 
 router.get(
   '/',
   checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestQuery(userQuerySchema),
   userController.getAllUser,
 );
 
-// Export router for use in main routes
+router.get(
+  '/:id',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  userController.getUserById,
+);
+
 export const userRoutes = router;

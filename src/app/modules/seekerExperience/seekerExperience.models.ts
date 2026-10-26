@@ -70,7 +70,8 @@ const seekerExperienceSchema = new Schema<
     responsibilities: {
       type: [String],
       default: [],
-      set: (res: string[]) => res.map((r) => r.toLowerCase().trim()),
+      // Free-text bullet points: trimmed only (case is preserved)
+      set: (res: string[] = []) => res.map((r) => r.trim()),
     },
 
     // Normalized to lowercase for consistent skill-based search

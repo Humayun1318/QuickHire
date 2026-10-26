@@ -7,11 +7,7 @@ import {
 import { ICompanyDocument, ICompanyModel } from './company.interface';
 import { addressSchema } from '../../shared/schemas/address.schema';
 import { socialLinksSchema } from '../../shared/schemas/socialLinks.schema';
-import {
-  generateSlug,
-  generateUniqueSlug,
-  normalizeName,
-} from './company.utils';
+import { generateUniqueSlug, normalizeName } from './company.utils';
 
 // ─────────────────────────────────────────────────────────────
 // Main schema
@@ -105,11 +101,16 @@ const companySchema = new Schema<ICompanyDocument, ICompanyModel>(
 // Indexes
 // ─────────────────────────────────────────────────────────────
 
-// ownerId already unique above — covers findOne({ ownerId }) queries
-// companySchema.index({ ownerId: 1 }, { unique: true });
+// One ACTIVE company per owner, enforced by the database (the service check
+// alone could be bypassed by two concurrent create requests). Soft-deleted
+// companies are excluded, so an owner can create a new company after deleting
+// the old one.
+companySchema.index(
+  { ownerId: 1 },
+  { unique: true, partialFilterExpression: { isActive: true } },
+);
 
-// slug is the primary lookup key for public company pages (/companies/techcorp)
-companySchema.index({ slug: 1 }, { unique: true });
+// slug (public company page lookup) is indexed by `unique: true` on the field
 
 // Geospatial index — enables location-based company/job search
 companySchema.index({ 'address.location': '2dsphere' });
@@ -159,7 +160,9 @@ companySchema.pre('save', async function () {
 });
 
 companySchema.pre('findOneAndUpdate', async function () {
-  const update = this.getUpdate() as any;
+  const update = this.getUpdate() as {
+    $set?: { name?: string; slug?: string };
+  } | null;
 
   if (!update?.$set?.name) return;
 

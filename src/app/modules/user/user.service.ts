@@ -1,12 +1,25 @@
 import AppError from '../../errorHelpers/AppError';
-import { AuthProvider, IUser } from './user.interface';
 import { User } from './user.models';
 import httpStatus from 'http-status-codes';
+import { QueryBuilder } from '../../builder/QueryBuilder';
+import { userBuilderConfig } from './user.constants';
 
-// Get all users (for admin)
-const getAllUser = async () => {
-  const users = await User.find().lean();
-  return users;
+// Paginated, filterable user list (admin only)
+const getAllUser = async (query: Record<string, unknown>) => {
+  const { data, meta } = await new QueryBuilder(
+    User,
+    User.find(),
+    query,
+    userBuilderConfig,
+  )
+    .search()
+    .filter()
+    .sort()
+    .paginate()
+    .lean()
+    .execute();
+
+  return { data, meta };
 };
 
 const getUserById = async (id: string) => {
@@ -16,12 +29,8 @@ const getUserById = async (id: string) => {
   }
   return user;
 };
-const updateUser = async () => {};
-const deleteUser = async () => {};
 
 export const userService = {
   getAllUser,
   getUserById,
-  updateUser,
-  deleteUser,
 };

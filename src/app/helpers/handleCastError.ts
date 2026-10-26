@@ -1,35 +1,26 @@
 /**
  * @file handleCastError.ts
  * @description MongoDB Cast Error handler
- * Processes invalid MongoDB ObjectID format errors into readable error messages
+ * Processes invalid ObjectId / wrong-type values into a 400 response.
  */
 
 import mongoose from 'mongoose';
 import { TGenericErrorResponse } from '../interfaces/error.types';
 
 /**
- * Handles MongoDB Cast Errors
- *
- * Cast errors occur when:
- * - An invalid ObjectID format is provided in a query (not a valid 24-character hex string)
- * - Attempting to find/update/delete a document with malformed ID
- * - Example: /api/v1/users/invalidid instead of /api/v1/users/507f1f77bcf86cd799439011
- *
- * This function converts MongoDB's technical error into a user-friendly message
- *
- * @param {mongoose.Error.CastError} err - MongoDB CastError object
- * @returns {TGenericErrorResponse} Standardized error response with status code and message
- *
- * Example:
- * Input: CastError from MongoDB for invalid ObjectID
- * Output: { statusCode: 400, message: "Invalid MongoDB ObjectID. Please provide a valid id" }
+ * Cast errors occur when a value cannot be converted to the schema type,
+ * most commonly a malformed ObjectId such as /users/invalid-id.
  */
 export const handleCastError = (
   err: mongoose.Error.CastError,
 ): TGenericErrorResponse => {
-  // Return standardized error response explaining the issue and how to fix it
+  const message =
+    err.kind === 'ObjectId'
+      ? `Invalid ID for '${err.path}'. Please provide a valid id`
+      : `Invalid value for '${err.path}'`;
+
   return {
     statusCode: 400,
-    message: 'Invalid MongoDB ObjectID. Please provide a valid id',
+    message,
   };
 };

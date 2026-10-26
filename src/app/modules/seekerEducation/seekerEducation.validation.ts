@@ -3,12 +3,12 @@ import { DegreeType } from './seekerEducation.constants';
 
 const createEducationSchema = z
   .object({
-    institution: z.string().trim().min(1, 'Institution is required'),
+    institution: z.string().trim().min(1, 'Institution is required').max(200),
     degree: z.enum(DegreeType),
-    fieldOfStudy: z.string().trim().optional(),
+    fieldOfStudy: z.string().trim().max(200).optional(),
     startDate: z.iso.datetime({ message: 'Invalid start date' }),
     endDate: z.iso.datetime({ message: 'Invalid end date' }).optional(),
-    grade: z.string().trim().optional(),
+    grade: z.string().trim().max(200).optional(),
     description: z.string().trim().max(500).optional(),
     isCurrentlyStudying: z.boolean().default(false),
   })
@@ -39,12 +39,12 @@ const createEducationSchema = z
 
 const updateEducationSchema = z
   .object({
-    institution: z.string().trim().optional(),
+    institution: z.string().trim().max(200).optional(),
     degree: z.enum(DegreeType).optional(),
-    fieldOfStudy: z.string().trim().optional(),
+    fieldOfStudy: z.string().trim().max(200).optional(),
     startDate: z.iso.datetime().optional(),
     endDate: z.iso.datetime().optional().nullable(),
-    grade: z.string().trim().optional(),
+    grade: z.string().trim().max(200).optional(),
     description: z.string().trim().max(500).optional(),
     isCurrentlyStudying: z.boolean().optional(),
   })

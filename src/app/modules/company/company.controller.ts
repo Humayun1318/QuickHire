@@ -34,13 +34,11 @@ const getMyCompany = catchAsync(async (req: Request, res: Response) => {
 
 // GET /companies?slug=some-slug or /companies?companyId=some-id
 const getSingleCompany = catchAsync(async (req: Request, res: Response) => {
-  const companyIdentifier = {
-    companyId: req.query.companyId,
-    slug: req.query.slug,
-  };
-  const result = await companyService.getSingleCompany(
-    companyIdentifier as { companyId?: string; slug?: string },
-  );
+  // Query params are validated by companyValidation.companyIdentifierQuerySchema
+  const result = await companyService.getSingleCompany({
+    companyId: req.query.companyId as string | undefined,
+    slug: req.query.slug as string | undefined,
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -86,7 +84,6 @@ const deleteCompany = catchAsync(async (req: Request, res: Response) => {
 // PATCH /companies/:companyId/verification  (admin only)
 const updateVerificationStatus = catchAsync(
   async (req: Request, res: Response) => {
-    const userId = getUserIdFromReq(req);
     const result = await companyService.updateVerificationStatus(
       req.params.companyId,
       req.body.verificationStatus as CompanyVerificationStatus,

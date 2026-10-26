@@ -1,4 +1,3 @@
-
 import { Response } from 'express';
 
 interface TResponse<T> {
@@ -14,7 +13,6 @@ interface TResponse<T> {
   // Optional pagination meta (page, limit, total, totalPages, ...)
   meta?: Record<string, unknown>;
 }
-
 
 export const sendResponse = <T>(res: Response, data: TResponse<T>) => {
   // Send JSON response with consistent structure

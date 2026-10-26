@@ -1,72 +1,51 @@
 import { FilterConfig } from '../../shared/queryBuilder';
 
 export const jobCategoryBuilderConfig: FilterConfig = {
-    searchableFields: [
-        'name',
-        'slug',
-    ],
+  searchableFields: ['name', 'slug'],
 
-    filterableFields: [
-        'isActive',
-        'parentId',
-        'depth',
-    ],
-    numberFields: [
-        "depth",
-        "jobCount",
-    ],
+  filterableFields: ['isActive', 'parentId', 'depth'],
+  numberFields: ['depth', 'jobCount'],
 
-    booleanFields: [
-        'isActive',
-    ],
+  booleanFields: ['isActive'],
 
-    objectIdFields: [
-        'parentId',
-    ],
-    
+  objectIdFields: ['parentId'],
 
-    rangeFields: [
-        {
-            field: 'depth',
-            minKey: 'minDepth',
-            maxKey: 'maxDepth',
-        },
-        {
-            field: 'jobCount',
-            minKey: 'minJobCount',
-            maxKey: 'maxJobCount',
-        },
-    ],
+  rangeFields: [
+    {
+      field: 'depth',
+      minKey: 'minDepth',
+      maxKey: 'maxDepth',
+    },
+    {
+      field: 'jobCount',
+      minKey: 'minJobCount',
+      maxKey: 'maxJobCount',
+    },
+  ],
 
-    sortableFields: [
-        'name',
-        'depth',
-        'jobCount',
-        'createdAt',
-        'updatedAt',
-    ],
+  sortableFields: ['name', 'depth', 'jobCount', 'createdAt', 'updatedAt'],
 
-    defaultSort: 'name',
+  defaultSort: 'name',
 
-    selectableFields: [
-        'name',
-        'slug',
-        'icon',
-        'parentId',
-        'depth',
-        'jobCount',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-    ],
+  selectableFields: [
+    'name',
+    'slug',
+    'icon',
+    'parentId',
+    'depth',
+    'jobCount',
+    'isActive',
+    'createdAt',
+    'updatedAt',
+  ],
 
-    populate: [
-        {
-            path: 'parentId',
-            select: 'name slug',
-        },
-    ],
+  populate: [
+    {
+      path: 'parentId',
+      select: 'name slug',
+    },
+  ],
 
-    defaultLimit: 20,
-    maxLimit: 100,
+  defaultLimit: 20,
+  maxLimit: 100,
 };

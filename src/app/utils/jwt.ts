@@ -1,33 +1,32 @@
 import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 
+// Tokens are always signed and verified with HS256. Pinning the algorithm on
+// verify rules out algorithm-confusion attacks (e.g. "alg": "none").
+const JWT_ALGORITHM = 'HS256' as const;
+
 export const generateToken = (
   payload: JwtPayload,
   jwtSecret: string,
   expiresIn: string,
 ): string => {
-  /**
-   * Sign the payload with the provided secret
-   * - Payload: Contains the actual data (claims)
-   * - Secret: Used to create the signature and verify authenticity
-   * - Options: Includes expiration time and other JWT options
-   */
-  const token = jwt.sign(payload, jwtSecret, {
+  return jwt.sign(payload, jwtSecret, {
+    algorithm: JWT_ALGORITHM,
     expiresIn,
   } as SignOptions);
-
-  return token;
 };
 
-export const verifyToken = (
-  token: string,
-  jwtSecret: string,
-): string | jwt.JwtPayload => {
-  /**
-   * Verify token signature and expiration
-   * Throws error if verification fails
-   * Returns decoded payload if verification succeeds
-   */
-  const verifiedToken = jwt.verify(token, jwtSecret);
+/**
+ * Verifies signature and expiry. Throws JsonWebTokenError / TokenExpiredError,
+ * which the global error handler maps to 401.
+ */
+export const verifyToken = (token: string, jwtSecret: string): JwtPayload => {
+  const verified = jwt.verify(token, jwtSecret, {
+    algorithms: [JWT_ALGORITHM],
+  });
 
-  return verifiedToken;
+  if (typeof verified === 'string') {
+    throw new jwt.JsonWebTokenError('Invalid token payload');
+  }
+
+  return verified;
 };

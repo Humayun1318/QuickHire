@@ -1,80 +1,74 @@
 import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status-codes';
-import { JwtPayload } from 'jsonwebtoken';
 import { envVars } from '../config/env';
 import AppError from '../errorHelpers/AppError';
 import { verifyToken } from '../utils/jwt';
 import { User } from '../modules/user/user.models';
-import { validateUserStatus } from '../utils/validateUserStatus';
+import {
+  validateTokenVersion,
+  validateUserStatus,
+} from '../utils/validateUserStatus';
 
+/**
+ * Reads the access token from the Authorization header ("Bearer <token>" or
+ * the bare token, kept for backwards compatibility) or from the httpOnly
+ * accessToken cookie.
+ */
+const extractAccessToken = (req: Request): string | undefined => {
+  const header = req.headers.authorization;
+  if (header) {
+    const [scheme, value] = header.split(' ');
+    if (value && scheme.toLowerCase() === 'bearer') return value.trim();
+    if (!value) return scheme.trim();
+  }
+  const cookieToken = req.cookies?.accessToken;
+  return typeof cookieToken === 'string' ? cookieToken : undefined;
+};
+
+/**
+ * Authentication + role-based authorization guard.
+ *
+ * The user is re-loaded from the database on every request, and the role
+ * check uses the CURRENT database role — not the role embedded in the token —
+ * so role changes, suspensions and deletions take effect immediately.
+ */
 export const checkAuth =
   (...authRoles: string[]) =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      /**
-       * Step 1: Extract JWT token from Authorization header
-       * Expected format: "Bearer <token>"
-       * The token should be the JWT access token generated during login
-       */
-      const accessToken = req.headers.authorization || req.cookies?.accessToken;
-
-      // Validate token presence
+      const accessToken = extractAccessToken(req);
       if (!accessToken) {
-        throw new AppError(httpStatus.UNAUTHORIZED, 'No Token Recieved');
-      }
-
-      /**
-       * Step 2: Verify and decode JWT token
-       * - Checks token signature validity
-       * - Checks token expiration
-       * - Extracts payload containing user information (email, role, etc.)
-       */
-      const verifiedToken = verifyToken(
-        accessToken,
-        envVars.JWT_ACCESS_SECRET,
-      ) as JwtPayload;
-
-      /**
-       * Step 3: Verify user exists in database
-       * Ensures the user account still exists (wasn't deleted)
-       * Fetches user document for status validation
-       */
-      const isUserExist = await User.findOne({ email: verifiedToken.email });
-      if (!isUserExist) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'User does not exist');
-      }
-
-      /**
-       * Step 4: Validate user account status
-       * Checks if user is:
-       * - Verified (email verified)
-       * - Active (not suspended)
-       * - Not blocked (account not locked)
-       * Throws error if user status is invalid
-       */
-      validateUserStatus(isUserExist);
-
-      /**
-       * Step 5: Check user role authorization
-       * Verifies that the user's role is in the list of allowed roles
-       * Example: If endpoint requires 'admin' role but user is 'user', deny access
-       */
-      if (!authRoles.includes(verifiedToken.role)) {
         throw new AppError(
-          httpStatus.FORBIDDEN,
-          'You are not permitted to view this route!!!',
+          httpStatus.UNAUTHORIZED,
+          'Authentication required. No access token provided.',
         );
       }
 
-      /**
-       * Step 6: Attach verified token to request object
-       * Makes user information accessible to route handlers
-       * Available as req.user throughout the request lifecycle
-       */
-      req.user = verifiedToken;
+      const verifiedToken = verifyToken(accessToken, envVars.JWT_ACCESS_SECRET);
+
+      const user = await User.findById(verifiedToken.userId);
+      if (!user) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'User no longer exists');
+      }
+
+      validateUserStatus(user);
+      validateTokenVersion(user, verifiedToken);
+
+      if (authRoles.length && !authRoles.includes(user.role)) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'You are not permitted to access this route',
+        );
+      }
+
+      req.user = {
+        ...verifiedToken,
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      };
       next();
     } catch (error) {
-      console.log('jwt error', error);
       next(error);
     }
   };

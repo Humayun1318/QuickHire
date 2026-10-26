@@ -1,7 +1,5 @@
 import httpStatus from 'http-status-codes';
 import {
-  CANNOT_CHANGE_OWNER_ROLE,
-  CANNOT_REMOVE_OWNER,
   MEMBER_ALREADY_EXISTS,
   MEMBER_NOT_FOUND,
   OWNER_CANNOT_LEAVE,
@@ -113,10 +111,13 @@ const addMember = async (
 // ─────────────────────────────────────────────────────────────
 // Get all members of a company
 // ─────────────────────────────────────────────────────────────
-const getCompanyMembers = async (companyIdentifier: {
-  companyId?: string;
-  slug?: string;
-}) => {
+const getCompanyMembers = async (
+  companyIdentifier: {
+    companyId?: string;
+    slug?: string;
+  },
+  requester: { userId: string; role: string },
+) => {
   let company: ICompanyDocument | null = null;
   if (companyIdentifier.companyId) {
     company = await Company.isCompanyExists(companyIdentifier.companyId);
@@ -128,6 +129,24 @@ const getCompanyMembers = async (companyIdentifier: {
   }
   if (!company) {
     throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
+  }
+
+  // The member list contains contact details (email, phone): only members
+  // of this company and platform admins may read it.
+  const isPlatformAdmin = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(
+    requester.role as UserRole,
+  );
+  if (!isPlatformAdmin) {
+    const requesterMembership = await CompanyMember.getMemberWithRole(
+      String(company._id),
+      requester.userId,
+    );
+    if (!requesterMembership) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not a member of this company',
+      );
+    }
   }
 
   return CompanyMember.find({ companyId: company._id, isActive: true })

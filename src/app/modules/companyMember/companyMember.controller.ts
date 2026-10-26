@@ -4,7 +4,10 @@ import { sendResponse } from '../../utils/sendResponse';
 import { companyMemberService } from './companyMember.service';
 import { CompanyMemberRole } from './companyMember.constants';
 import catchAsync from '../../utils/catchAsync';
-import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
+import {
+  getUserIdFromReq,
+  getUserRoleFromReq,
+} from '../../utils/getUserIdFromReq';
 
 // POST /companies/members
 const addMember = catchAsync(async (req, res) => {
@@ -28,12 +31,14 @@ const addMember = catchAsync(async (req, res) => {
 // GET /companies/members
 const getCompanyMembers = catchAsync(async (req: Request, res: Response) => {
   const companyIdentifier = {
-    companyId: req.query.companyId as string,
-    slug: req.query.slug as string,
+    companyId: req.query.companyId as string | undefined,
+    slug: req.query.slug as string | undefined,
   };
 
-  const result =
-    await companyMemberService.getCompanyMembers(companyIdentifier);
+  const result = await companyMemberService.getCompanyMembers(
+    companyIdentifier,
+    { userId: getUserIdFromReq(req), role: getUserRoleFromReq(req) },
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

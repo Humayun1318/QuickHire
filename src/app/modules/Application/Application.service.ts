@@ -1,5 +1,4 @@
 import httpStatus from 'http-status-codes';
-import { MongooseError } from 'mongoose';
 import { Types } from 'mongoose';
 import { Application } from './Application.models';
 import {
@@ -89,11 +88,9 @@ const submitApplication = async (
       status: ApplicationStatus.PENDING,
     });
   } catch (error) {
-    if (
-      error instanceof MongooseError &&
-      (error.message.includes('E11000') ||
-        error.message.includes('duplicate key'))
-    ) {
+    // Duplicate key errors come from the MongoDB driver (MongoServerError,
+    // code 11000), not from Mongoose, so match on the error code.
+    if ((error as { code?: number }).code === 11000) {
       throw new AppError(httpStatus.CONFLICT, DUPLICATE_APPLICATION);
     }
     throw error;
@@ -105,9 +102,7 @@ const submitApplication = async (
 // ─────────────────────────────────────────────────────────────
 // Seeker — list own applications with job + resume populated
 // ─────────────────────────────────────────────────────────────
-const getMyApplications = async (
-  userId: string,
-): Promise<IApplicationDocument[]> => {
+const getMyApplications = async (userId: string) => {
   return Application.find({ applicantId: userId })
     .populate('jobId', 'title slug status')
     .populate('resumeId', 'title fileUrl')
@@ -139,16 +134,29 @@ const withdrawApplication = async (
       `Cannot modify an application in '${application.status}' status`,
     );
   }
-  const updated = await Application.findByIdAndUpdate(
-    applicationId,
+  // Conditional update: only one of two concurrent withdraw requests can
+  // match, so the job's counter is decremented exactly once.
+  const updated = await Application.findOneAndUpdate(
+    {
+      _id: applicationId,
+      applicantId: userId,
+      status: { $nin: APPLICATION_TERMINAL_STATUSES },
+    },
     { $set: { status: ApplicationStatus.WITHDRAWN } },
     { new: true },
   );
+  if (!updated) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'Application status changed. Please refresh and try again.',
+    );
+  }
+
   // Reflect the withdrawal on the job's cached counter
   await jobListingService.decrementApplicationCount(
     application.jobId.toString(),
   );
-  return updated!;
+  return updated;
 };
 // ─────────────────────────────────────────────────────────────
 // Employer — review: status / employerNote / score
@@ -195,22 +203,27 @@ const updateEmployerFields = async (
   }
   if (dto.employerNote !== undefined) allowed.employerNote = dto.employerNote;
   if (dto.score !== undefined) allowed.score = dto.score;
-  const updated = await Application.findByIdAndUpdate(
-    applicationId,
+  // Conditional on the status read above, so a concurrent withdrawal is not
+  // silently overwritten.
+  const updated = await Application.findOneAndUpdate(
+    { _id: applicationId, status: application.status },
     { $set: allowed },
     { new: true, runValidators: true },
   );
-  return updated!;
+  if (!updated) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      'Application status changed. Please refresh and try again.',
+    );
+  }
+  return updated;
 };
 // ─────────────────────────────────────────────────────────────
 // Employer — list applications for one of their job listings.
 // Resolves the caller's company from the job's companyId and
 // verifies the caller manages that company.
 // ─────────────────────────────────────────────────────────────
-const getJobApplications = async (
-  jobId: string,
-  userId: string,
-): Promise<IApplicationDocument[]> => {
+const getJobApplications = async (jobId: string, userId: string) => {
   const job = await JobListing.findById(jobId).select('companyId').lean();
   if (!job) {
     throw new AppError(httpStatus.NOT_FOUND, JOB_NOT_FOUND_FOR_APPLICATION);
@@ -231,9 +244,7 @@ const getJobApplications = async (
 // ─────────────────────────────────────────────────────────────
 // Admin — get a single application by id (audit / support)
 // ─────────────────────────────────────────────────────────────
-const getApplicationById = async (
-  applicationId: string,
-): Promise<IApplicationDocument | null> => {
+const getApplicationById = async (applicationId: string) => {
   const application = await Application.findById(applicationId)
     .populate('jobId', 'title slug status')
     .populate('applicantId', 'name email role')

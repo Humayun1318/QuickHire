@@ -25,7 +25,7 @@ import {
  *
  * Error Structure:
  * - statusCode: 400 (Bad Request)
- * - message: 'Zod Error'
+ * - message: 'Validation Error'
  * - errorSources: Array of validation errors per field
  *
  * Example Zod Error:
@@ -40,37 +40,28 @@ import {
  * Returns:
  * {
  *   statusCode: 400,
- *   message: 'Zod Error',
+ *   message: 'Validation Error',
  *   errorSources: [
  *     { path: 'email', message: 'Invalid email' },
  *     { path: 'password', message: 'Must be at least 8 characters' }
  *   ]
  * }
  */
-export const handlerZodError = (err: any): TGenericErrorResponse => {
-  // Array to store processed validation errors
-  const errorSources: TErrorSources[] = [];
-
+export const handlerZodError = (err: {
+  issues: { path: PropertyKey[]; message: string }[];
+}): TGenericErrorResponse => {
   /**
-   * Iterate through each validation issue from Zod
-   * Extract the field path and error message
-   * The path is an array (e.g., ['user', 'email']), so we get the last element (field name)
+   * Each issue is reported with its full dotted path so nested fields stay
+   * unambiguous: ['address', 'city'] -> 'address.city'
    */
-  err.issues.forEach((issue: any) => {
-    // Extract the field name from the path array (last element)
-    // Example: path=['email'] -> get 'email'
-    // Example: path=['user', 'profile', 'phone'] -> get 'phone'
-    errorSources.push({
-      path: issue.path[issue.path.length - 1],
-      // The error message explaining why validation failed
-      message: issue.message,
-    });
-  });
+  const errorSources: TErrorSources[] = err.issues.map((issue) => ({
+    path: issue.path.map(String).join('.'),
+    message: issue.message,
+  }));
 
-  // Return standardized error response with all validation errors
   return {
     statusCode: 400, // Bad Request - client provided invalid data
-    message: 'Zod Error',
+    message: 'Validation Error',
     errorSources, // Array of field-specific errors
   };
 };

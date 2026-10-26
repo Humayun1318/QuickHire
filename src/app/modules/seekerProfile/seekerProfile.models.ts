@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model } from 'mongoose';
 import {
   AvailabilityStatus,
   JobPreferenceType,
@@ -132,8 +132,7 @@ const seekerProfileSchema = new Schema<
 // Indexes
 // ─────────────────────────────────────────────────────────────
 
-// userId is already unique — covers findOne({ userId }) queries
-seekerProfileSchema.index({ userId: 1 });
+// userId is indexed by `unique: true` on the field (one profile per user)
 
 // Geospatial index — enables $near and $geoWithin queries
 // Required for "jobs near me" or "seekers near location" features
@@ -194,40 +193,11 @@ seekerProfileSchema.pre('save', function (next) {
 
 // Pre-findOneAndUpdate: recalculate completeness when updating via findOneAndUpdate
 // Note: 'this' here is the query, not the document
-// seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
-//     const update = this.getUpdate() as Record<string, any>;
-
-//     // when education and experience are updated, they call this hook but they don't update seeker profile directly, so we need to skip completeness calculation in that case
-//     if (update['$inc']?.profileCompleteness !== undefined) {
-//         return next();
-//     }
-//     if (update) {
-//         // Fetch the current doc to merge with incoming updates for accurate scoring
-//         const doc = await this.model.findOne(this.getQuery());
-//         if (doc) {
-//             const merged = Object.assign(doc.toObject(), update['$set'] ?? update);
-//             // Temporarily assign to calculate
-//             const tempScore = Object.keys(PROFILE_COMPLETENESS_WEIGHTS).reduce(
-//                 (score, key) => {
-//                     if (merged[key]) return score + PROFILE_COMPLETENESS_WEIGHTS[key];
-//                     return score;
-//                 },
-//                 0,
-//             );
-//             this.setUpdate({
-//                 ...update,
-//                 $set: {
-//                     ...(update['$set'] as object),
-//                     profileCompleteness: Math.min(tempScore, 100),
-//                 },
-//             });
-//         }
-//      console.log('Pre-update hook: recalculated profileCompleteness:', this.getUpdate());
-//     }
-//     next();
-// });
 seekerProfileSchema.pre('findOneAndUpdate', async function (next) {
-  const update = this.getUpdate() as Record<string, any>;
+  const update = this.getUpdate() as {
+    $set?: Record<string, unknown>;
+    $inc?: Record<string, number>;
+  };
 
   // Skip recalculation when only incrementing/decrementing completeness
   if (update['$inc']?.profileCompleteness !== undefined) {

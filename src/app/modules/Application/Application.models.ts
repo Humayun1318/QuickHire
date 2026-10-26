@@ -57,12 +57,6 @@ const applicationSchema = new Schema<IApplicationDocument, IApplicationModel>(
   {
     timestamps: true,
     versionKey: false,
-    toJSON: {
-      transform: (_doc, ret) => {
-        delete ret.__v;
-        return ret;
-      },
-    },
   },
 );
 // ─────────────────────────────────────────────────────────────

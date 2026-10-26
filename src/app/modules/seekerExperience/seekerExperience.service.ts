@@ -37,7 +37,7 @@ const createExperience = async (
     //   $inc: { profileCompleteness: EXPERIENCE_COMPLETENESS_POINTS },
     // });
 
-    seekerProfileService.incrementCompleteness(
+    await seekerProfileService.incrementCompleteness(
       userId,
       EXPERIENCE_COMPLETENESS_POINTS,
     );

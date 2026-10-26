@@ -5,14 +5,17 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default [
   {
-    files: ['**/*.ts'],
-    ignores: ['dist/**/*', 'node_modules/**/*'],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
+  },
+  {
+    files: ['**/*.ts', '**/*.mts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: './tsconfig.json',
+        // Covers src/, tests/ and scripts/
+        project: './tsconfig.dev.json',
       },
     },
     plugins: {
@@ -25,7 +28,7 @@ export default [
       'prettier/prettier': ['error', { singleQuote: true, semi: true }],
       '@typescript-eslint/no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': 'off',
     },

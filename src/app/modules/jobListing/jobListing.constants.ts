@@ -1,19 +1,18 @@
-export const JOB_NOT_FOUND  = 'Job listing not found';
-export const JOB_NOT_OWNED  =
+export const JOB_NOT_FOUND = 'Job listing not found';
+export const JOB_NOT_OWNED =
   'You do not have permission to modify this job listing';
-export const JOB_EXPIRED    = 'This job listing has expired';
-export const JOB_NOT_ACTIVE =
-  'This job listing is not accepting applications';
+export const JOB_EXPIRED = 'This job listing has expired';
+export const JOB_NOT_ACTIVE = 'This job listing is not accepting applications';
 
 // ─────────────────────────────────────────────────────────────
 // Enums
 // ─────────────────────────────────────────────────────────────
 export enum JobType {
-  FULL_TIME  = 'full-time',
-  PART_TIME  = 'part-time',
-  FREELANCE  = 'freelance',
+  FULL_TIME = 'full-time',
+  PART_TIME = 'part-time',
+  FREELANCE = 'freelance',
   INTERNSHIP = 'internship',
-  CONTRACT   = 'contract',
+  CONTRACT = 'contract',
 }
 
 export enum WorkMode {
@@ -32,19 +31,19 @@ export enum SalaryCurrency {
 //                  → expired (auto, when expiresAt passes)
 // A published job can be reopened (set back to published) if not expired
 export enum JobStatus {
-  DRAFT     = 'draft',
+  DRAFT = 'draft',
   PUBLISHED = 'published',
-  CLOSED    = 'closed',
-  EXPIRED   = 'expired',
+  CLOSED = 'closed',
+  EXPIRED = 'expired',
 }
 
 // Experience levels — used for filtering and matching
 export enum ExperienceLevel {
-  ENTRY  = 'entry',    // 0-1 years
-  JUNIOR = 'junior',   // 1-3 years
-  MID    = 'mid',      // 3-5 years
-  SENIOR = 'senior',   // 5-8 years
-  LEAD   = 'lead',     // 8+ years
+  ENTRY = 'entry', // 0-1 years
+  JUNIOR = 'junior', // 1-3 years
+  MID = 'mid', // 3-5 years
+  SENIOR = 'senior', // 5-8 years
+  LEAD = 'lead', // 8+ years
 }
 
 // Default expiry in days when employer doesn't set a custom date

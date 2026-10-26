@@ -27,7 +27,16 @@ const withdrawApplicationSchema = z.object({
 // ─────────────────────────────────────────────────────────────
 const employerReviewSchema = z
   .object({
-    status: z.enum(Object.values(ApplicationStatus)).optional(),
+    // Employers move applications through the review pipeline; "withdrawn"
+    // is reserved for the applicant and "pending" is the initial state.
+    status: z
+      .enum([
+        ApplicationStatus.SHORTLISTED,
+        ApplicationStatus.INTERVIEWED,
+        ApplicationStatus.ACCEPTED,
+        ApplicationStatus.REJECTED,
+      ])
+      .optional(),
     employerNote: z
       .string()
       .trim()

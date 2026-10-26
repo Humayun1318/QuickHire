@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequestBody } from '../../middlewares/validateRequest';
+import {
+  validateRequestBody,
+  validateRequestQuery,
+} from '../../middlewares/validateRequest';
 import { seekerProfileController } from './seekerProfile.controller';
 import { seekerProfileValidation } from './seekerProfile.validation';
 import { UserRole } from '../user/user.interface';
@@ -26,6 +29,7 @@ router.get(
 router.get(
   '/',
   checkAuth(UserRole.EMPLOYER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestQuery(seekerProfileValidation.profileQuerySchema),
   seekerProfileController.getProfileById,
 );
 

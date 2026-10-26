@@ -3,18 +3,24 @@ import catchAsync from '../../utils/catchAsync';
 import { authService } from './auth.service';
 import { sendResponse } from '../../utils/sendResponse';
 import httpStatus from 'http-status-codes';
-import { setAuthCookie } from '../../utils/setAuthCookie';
-import { envVars } from '../../config/env';
-import { JwtPayload } from 'jsonwebtoken';
+import { clearAuthCookies, setAuthCookie } from '../../utils/setAuthCookie';
+import { envVars, isGoogleAuthEnabled } from '../../config/env';
 import passport from 'passport';
 import AppError from '../../errorHelpers/AppError';
 import { createUserTokens } from '../../utils/userTokens';
-import { validateUserStatus } from '../../utils/validateUserStatus';
+import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
+import { IUser } from '../user/user.interface';
+import {
+  createOAuthState,
+  isNonceMatch,
+  OAUTH_STATE_COOKIE,
+  oauthStateCookieOptions,
+  parseOAuthState,
+} from './auth.utils';
 
 const createUser = catchAsync(async (req: Request, res: Response) => {
   const result = await authService.createUser(req.body);
 
-  // Send success response to client with created user data
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -23,171 +29,199 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const credentialsLogin = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    // -------------using passport to credentials login-----------------------
-    passport.authenticate('local', async (err: any, user: any, info: any) => {
+/**
+ * Email + password login via the passport local strategy (no session).
+ * Returns the tokens in the body and also sets them as httpOnly cookies.
+ */
+const credentialsLogin = (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate(
+    'local',
+    { session: false },
+    (err: unknown, user: IUser | false, info?: { message?: string }) => {
       if (err) {
-        // ❌❌❌❌❌
-        // throw new AppError(401, "Some error")
-        // next(err)
-        // return new AppError(401, err)
-
-        // ✅✅✅✅
-        // return next(err)
-        // console.log("from err");
-        return next(new AppError(401, err));
+        // Unexpected failure (e.g. database error) -> 500 via error handler
+        return next(err);
       }
 
       if (!user) {
-        // console.log("from !user");
-        // return new AppError(401, info.message)
-        return next(new AppError(401, info.message));
+        return next(
+          new AppError(
+            httpStatus.UNAUTHORIZED,
+            info?.message || 'Invalid email or password',
+          ),
+        );
       }
 
-      //generate tokens
       const userTokens = createUserTokens(user);
-
-      //set cookies in browser
       setAuthCookie(res, userTokens);
 
       sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
-        message: 'User Logged In Successfully',
+        message: 'User logged in successfully',
         data: {
           accessToken: userTokens.accessToken,
           refreshToken: userTokens.refreshToken,
-          user: user,
+          user,
         },
       });
-    })(req, res, next);
-  },
-);
+    },
+  )(req, res, next);
+};
 
+/**
+ * Issues a new access token. The refresh token is read from the httpOnly
+ * cookie, or from the JSON body for non-browser clients.
+ */
 const getNewAccessTokenUsingRefreshToken = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const refreshToken = req?.cookies?.refreshToken;
+  async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.refreshToken ?? req.body?.refreshToken;
 
     const tokenInfo =
       await authService.getNewAccessTokenUsingRefreshToken(refreshToken);
 
-    // Set the new access token in an HTTP-only cookie
     setAuthCookie(res, tokenInfo);
 
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: 'New Access Token Retrived Successfully',
+      message: 'New access token retrieved successfully',
       data: tokenInfo,
     });
   },
 );
 
-const logout = catchAsync(async (req: Request, res: Response) => {
-  res.clearCookie('accessToken', {
-    httpOnly: true,
-    secure: envVars.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: envVars.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
+/**
+ * Clears the auth cookies. JWTs are stateless, so tokens that a client kept
+ * elsewhere remain valid until they expire (see docs/SECURITY.md).
+ */
+const logout = catchAsync(async (_req: Request, res: Response) => {
+  clearAuthCookies(res);
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'User Logged Out Successfully',
+    message: 'User logged out successfully',
     data: null,
   });
 });
 
-const changePassword = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    await authService.changePassword(req.body, (req.user as JwtPayload).email);
+/**
+ * Changes the password and rotates tokens: every other session is
+ * invalidated, the current client receives fresh tokens.
+ */
+const changePassword = catchAsync(async (req: Request, res: Response) => {
+  const user = await authService.changePassword(
+    req.body,
+    getUserIdFromReq(req),
+  );
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: 'Password Changed Successfully',
-      data: null,
-    });
-  },
-);
+  const tokens = createUserTokens(user);
+  setAuthCookie(res, tokens);
 
-const googleCallbackController = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate('google', (err: any, user: any, info: any) => {
-      try {
-        // ERROR CASE
-        if (err) {
-          return res.redirect(
-            `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
-              err || 'Internal google strategy error',
-            )}`,
-          );
-        }
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Password changed successfully',
+    data: tokens,
+  });
+});
 
-        // AUTH FAILED CASE
-        if (!user) {
-          const message = info?.message || 'Authentication failed';
+const ensureGoogleEnabled = () => {
+  if (!isGoogleAuthEnabled) {
+    throw new AppError(
+      httpStatus.SERVICE_UNAVAILABLE,
+      'Google sign-in is not configured on this server',
+    );
+  }
+};
 
-          return res.redirect(
-            `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(
-              message,
-            )}`,
-          );
-        }
+/**
+ * Starts the Google OAuth flow. Query params:
+ *   role     - seeker | employer (only used when a new account is created)
+ *   redirect - frontend path to return to after login (relative path only)
+ */
+const googleLogin = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    ensureGoogleEnabled();
+  } catch (error) {
+    return next(error);
+  }
 
-        // SUCCESS CASE
-        req.user = user;
+  const { nonce, state } = createOAuthState(req.query);
+  res.cookie(OAUTH_STATE_COOKIE, nonce, oauthStateCookieOptions());
 
-        // ───── STATE HANDLING ─────
-        let redirectTo = '';
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state,
+    session: false,
+  })(req, res, next);
+};
 
-        if (req.query.state && typeof req.query.state === 'string') {
-          try {
-            const parsed = JSON.parse(req.query.state);
-            if (parsed?.redirect) {
-              redirectTo = parsed.redirect;
-            }
-          } catch {
-            redirectTo = '';
-          }
-        }
+const redirectToFrontendLogin = (res: Response, message: string) =>
+  res.redirect(
+    `${envVars.FRONTEND_URL}/login?error=${encodeURIComponent(message)}`,
+  );
 
-        if (redirectTo.startsWith('/')) {
-          redirectTo = redirectTo.slice(1);
-        }
+/**
+ * Google OAuth callback: verifies the state nonce, runs the Google strategy,
+ * sets the auth cookies and redirects to the frontend.
+ */
+const googleCallbackController = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    ensureGoogleEnabled();
+  } catch (error) {
+    return next(error);
+  }
 
-        // ───── TOKEN + COOKIE ─────
-        const tokenInfo = createUserTokens(user);
-        setAuthCookie(res, tokenInfo);
+  const state = parseOAuthState(req.query.state);
+  const expectedNonce = req.cookies?.[OAUTH_STATE_COOKIE];
+  const { maxAge: _maxAge, ...clearOptions } = oauthStateCookieOptions();
+  res.clearCookie(OAUTH_STATE_COOKIE, clearOptions);
 
-        // ───── FINAL REDIRECT ─────
-        return res.redirect(`${envVars.FRONTEND_URL}/${redirectTo}`);
-      } catch (error) {
-        next(error);
+  if (!state || !isNonceMatch(expectedNonce, state.n)) {
+    return redirectToFrontendLogin(
+      res,
+      'Login session expired or is invalid. Please try again.',
+    );
+  }
+
+  passport.authenticate(
+    'google',
+    { session: false },
+    (err: unknown, user: IUser | false, info?: { message?: string }) => {
+      if (err) {
+        console.error('Google OAuth error:', err);
+        return redirectToFrontendLogin(res, 'Google sign-in failed');
       }
-    })(req, res, next);
-  },
-);
-const getAllAuth = catchAsync(async (req: Request, res: Response) => {});
-const getAuthById = catchAsync(async (req: Request, res: Response) => {});
-const updateAuth = catchAsync(async (req: Request, res: Response) => {});
-const deleteAuth = catchAsync(async (req: Request, res: Response) => {});
+
+      if (!user) {
+        return redirectToFrontendLogin(
+          res,
+          info?.message || 'Authentication failed',
+        );
+      }
+
+      const tokenInfo = createUserTokens(user);
+      setAuthCookie(res, tokenInfo);
+
+      // state.redirect is sanitized to a relative path, so the redirect can
+      // only ever target the configured frontend origin.
+      return res.redirect(`${envVars.FRONTEND_URL}${state.redirect}`);
+    },
+  )(req, res, next);
+};
 
 export const authController = {
   createUser,
-  createAuth: credentialsLogin,
+  credentialsLogin,
   getNewAccessTokenUsingRefreshToken,
   logout,
   changePassword,
+  googleLogin,
   googleCallbackController,
-  getAllAuth,
-  getAuthById,
-  updateAuth,
-  deleteAuth,
 };

@@ -1,0 +1,12 @@
+{
+  // Type-checking config for everything that is not part of the production
+  // build (tests, scripts, tool configs). `npm run build` still uses
+  // tsconfig.json, which compiles only src/ into dist/.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "vitest.config.mts"],
+  "exclude": ["node_modules", "dist"]
+}

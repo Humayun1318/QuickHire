@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema } from 'mongoose';
 
 // GeoJSON Point sub-schema
 // MongoDB requires this exact format for 2dsphere spatial indexing

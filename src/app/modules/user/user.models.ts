@@ -113,6 +113,16 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
       default: null,
     },
 
+    /**
+     * Incremented on password change. Tokens carry the version they were
+     * issued with ("tv" claim); a mismatch invalidates them.
+     */
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     // ── FK References ──────────────────────────────
     seekerProfileId: {
       type: Schema.Types.ObjectId,
@@ -147,14 +157,18 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
      */
     toJSON: {
       transform: (_doc, ret) => {
-        delete ret.password;
-        return ret;
+        const out = ret as Record<string, unknown>;
+        delete out.password;
+        delete out.tokenVersion;
+        return out;
       },
     },
     toObject: {
       transform: (_doc, ret) => {
-        delete ret.password;
-        return ret;
+        const out = ret as Record<string, unknown>;
+        delete out.password;
+        delete out.tokenVersion;
+        return out;
       },
     },
   },
@@ -183,10 +197,7 @@ userSchema.index({ 'auths.provider': 1, 'auths.providerId': 1 });
 userSchema.pre('save', async function (next) {
   if (!this.password || !this.isModified('password')) return next();
 
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(envVars.BCRYPT_SALT_ROUND),
-  );
+  this.password = await bcrypt.hash(this.password, envVars.BCRYPT_SALT_ROUND);
 
   next();
 });

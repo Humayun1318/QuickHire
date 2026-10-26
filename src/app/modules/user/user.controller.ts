@@ -3,23 +3,25 @@ import catchAsync from '../../utils/catchAsync';
 import { userService } from './user.service';
 import { sendResponse } from '../../utils/sendResponse';
 import httpStatus from 'http-status-codes';
+import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
 
 const getAllUser = catchAsync(async (req: Request, res: Response) => {
-  // Call service layer to fetch all users from database
-  const result = await userService.getAllUser();
+  const result = await userService.getAllUser(req.query);
 
-  // Send success response with users data
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Users retrieved successfully',
-    data: result,
+    data: result.data,
+    meta: { ...result.meta },
   });
 });
 
-const getUserById = catchAsync(async (req: Request, res: Response) => {
-  const result = await userService.getUserById(req.params.id);
-  // Send success response with user data
+// Current authenticated user (works for cookie-only sessions, e.g. after
+// Google login where the frontend never sees the tokens).
+const getMe = catchAsync(async (req: Request, res: Response) => {
+  const result = await userService.getUserById(getUserIdFromReq(req));
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -28,17 +30,19 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateUser = catchAsync(async (req: Request, res: Response) => {
-  // TODO: Implement update user logic
-});
+const getUserById = catchAsync(async (req: Request, res: Response) => {
+  const result = await userService.getUserById(req.params.id as string);
 
-const deleteUser = catchAsync(async (req: Request, res: Response) => {
-  // TODO: Implement delete user logic
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User retrieved successfully',
+    data: result,
+  });
 });
 
 export const userController = {
   getAllUser,
+  getMe,
   getUserById,
-  updateUser,
-  deleteUser,
 };

@@ -69,7 +69,7 @@ export const handlerValidationError = (
    * Iterate through each validation error
    * Extract the field path and error message
    */
-  errors.forEach((errorObject: any) =>
+  errors.forEach((errorObject) =>
     errorSources.push({
       // Path of the field that failed validation (e.g., 'email', 'age', 'user.profile.phone')
       path: errorObject.path,

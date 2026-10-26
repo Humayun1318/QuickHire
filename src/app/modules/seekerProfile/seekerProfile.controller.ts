@@ -3,8 +3,12 @@ import { sendResponse } from '../../utils/sendResponse';
 import { seekerProfileService } from './seekerProfile.service';
 import catchAsync from '../../utils/catchAsync';
 import { parseBoolean } from '../user/parseBoolean';
-import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
+import {
+  getUserIdFromReq,
+  getUserRoleFromReq,
+} from '../../utils/getUserIdFromReq';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
+import { UserRole } from '../user/user.interface';
 
 // POST /seeker-profiles
 const createSeekerProfile = catchAsync(async (req: Request, res: Response) => {
@@ -36,28 +40,42 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /seeker-profiles?profileId=12345
+// GET /seeker-profiles?profileId=12345   (single profile)
+// GET /seeker-profiles?page=1&limit=20   (paginated list)
 const getProfileById = catchAsync(async (req: Request, res: Response) => {
-  // const userId = (req.user as JwtPayload).userId;
-  const active = parseBoolean(req.query.active as string);
-  let result;
-  let message;
-  if (req.query?.profileId) {
-    result = await seekerProfileService.getProfileById(
-      req.query?.profileId as string,
+  // Only platform admins may look at soft-deleted (inactive) profiles.
+  const isPlatformAdmin = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(
+    getUserRoleFromReq(req) as UserRole,
+  );
+  const requestedActive = parseBoolean(req.query.active as string);
+  const active = isPlatformAdmin ? (requestedActive ?? true) : true;
+
+  if (req.query.profileId) {
+    const result = await seekerProfileService.getProfileById(
+      req.query.profileId as string,
       active,
     );
-    message = 'Profile retrieved successfully';
-  } else {
-    result = await seekerProfileService.getAllProfiles(active);
-    message = 'Profiles retrieved successfully';
+
+    sendResponse(res, {
+      statusCode: HTTP_STATUS_CODE.OK,
+      success: true,
+      message: 'Profile retrieved successfully',
+      data: result,
+    });
+    return;
   }
+
+  const result = await seekerProfileService.getAllProfiles(active, {
+    page: req.query.page,
+    limit: req.query.limit,
+  });
 
   sendResponse(res, {
     statusCode: HTTP_STATUS_CODE.OK,
     success: true,
-    message: message,
-    data: result,
+    message: 'Profiles retrieved successfully',
+    data: result.profiles,
+    meta: result.meta,
   });
 });
 

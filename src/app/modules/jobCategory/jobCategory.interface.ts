@@ -1,18 +1,18 @@
 import { Document, Model, Types } from 'mongoose';
 
 export interface IJobCategory {
-  name:      string;
-  slug:      string;          // auto-generated, URL-safe
-  icon?:     string;          // icon class or URL for UI rendering
+  name: string;
+  slug: string; // auto-generated, URL-safe
+  icon?: string; // icon class or URL for UI rendering
   // Self-reference — null means root/top-level category
   // parentId: null  → Technology, Design, Marketing
   // parentId: <id>  → Frontend (child of Technology)
   parentId?: Types.ObjectId | null;
   // Cached count — incremented when job is published, decremented on close/delete
   // Avoids expensive countDocuments() on every category list render
-  jobCount:  number;
+  jobCount: number;
   depth: number;
-  isActive:  boolean;
+  isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -31,13 +31,14 @@ export interface IJobCategoryModel extends Model<IJobCategoryDocument> {
 // ─────────────────────────────────────────────────────────────
 
 // Recursive tree structure — used by buildCategoryTree utility
-export interface ICategoryTreeNode extends IJobCategoryDocument {
+export interface ICategoryTreeNode extends IJobCategory {
+  _id: Types.ObjectId;
   children: ICategoryTreeNode[];
 }
 
 // Breadcrumb item — used by buildBreadcrumb utility
 export interface IBreadcrumbItem {
-  _id:  string;
+  _id: string;
   name: string;
   slug: string;
 }

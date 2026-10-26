@@ -1,44 +1,26 @@
 /**
  * @file handlerDuplicateError.ts
  * @description MongoDB duplicate key error handler
- * Processes MongoDB error code 11000 (unique constraint violation) into readable error messages
+ * Processes MongoDB error code 11000 (unique constraint violation) into a
+ * readable 409 Conflict response.
  */
 
 import { TGenericErrorResponse } from '../interfaces/error.types';
+import { HTTP_STATUS_CODE } from '../utils/HTTP_STATUS_CODE';
 
 /**
- * Handles MongoDB duplicate key errors
- *
- * When a document violates a unique index constraint, MongoDB throws error code 11000
- * with a message like: E11000 duplicate key error collection: quickhire.users index: email_1 dup key: { email: "test@example.com" }
- *
- * This function:
- * 1. Extracts the duplicate field name from the error message using regex
- * 2. Formats a user-friendly error message
- * 3. Returns standardized error response
- *
- * @param {any} err - MongoDB error object with code 11000
- * @returns {TGenericErrorResponse} Standardized error response with status code and message
- *
- * Example:
- * Input: MongoDB E11000 error for duplicate email
- * Output: { statusCode: 400, message: "email already exists!!" }
+ * The MongoDB driver exposes the offending field(s) on `err.keyValue`, e.g.
+ * `{ email: "test@example.com" }`. Only the field name is reported — the
+ * value is not echoed back to the client.
  */
-export const handlerDuplicateError = (err: any): TGenericErrorResponse => {
-  /**
-   * Extract the field name from MongoDB error message
-   * Regex pattern: /"([^"]*)"/  matches the first quoted string in the error message
-   * This extracts the duplicate field name (e.g., "email")
-   *
-   * Example error message:
-   * E11000 duplicate key error collection: quickhire.users index: email_1 dup key: { email: "test@example.com" }
-   * This regex extracts: "email"
-   */
-  const matchedArray = err.message.match(/"([^"]*)"/);
+export const handlerDuplicateError = (err: {
+  keyValue?: Record<string, unknown>;
+}): TGenericErrorResponse => {
+  const fields = Object.keys(err.keyValue ?? {});
+  const fieldLabel = fields.length ? fields.join(', ') : 'Resource';
 
-  // Return standardized error response with 400 status and descriptive message
   return {
-    statusCode: 400,
-    message: `${matchedArray[1]} already exists!!`,
+    statusCode: HTTP_STATUS_CODE.CONFLICT,
+    message: `${fieldLabel} already exists`,
   };
 };

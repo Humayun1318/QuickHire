@@ -2,20 +2,16 @@ import httpStatus from 'http-status-codes';
 import { Request, Response } from 'express';
 import { sendResponse } from '../../utils/sendResponse';
 import { jobListingService } from './jobListing.service';
-import { IJobListingQuery } from './jobListing.interface';
-import { JobStatus } from './jobListing.constants';
+import { ICompanyJobsQuery, IJobListingQuery } from './jobListing.interface';
 import catchAsync from '../../utils/catchAsync';
-import { getUserIdFromReq } from '../../utils/getUserIdFromReq';
+import {
+  getUserIdFromReq,
+  getUserRoleFromReq,
+} from '../../utils/getUserIdFromReq';
 
-// Validation schemas wrap fields under `body` (e.g. createJobSchema),
-// so after validateRequestBody the parsed payload lives at req.body.body.
-const unwrap = <T extends Record<string, unknown>>(body: T): T =>
-  ((body as unknown as { body?: T })?.body as T | undefined) ?? body;
-
-// POST /jobs
-// Body must include companyId — the member selects which company they're posting for
 const createJob = catchAsync(async (req: Request, res: Response) => {
-  const { companyId, ...payload } = unwrap(req.body);
+  const { companyId, ...payload } = req.body;
+
   const result = await jobListingService.createJob(
     getUserIdFromReq(req),
     companyId,
@@ -30,10 +26,9 @@ const createJob = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /jobs?searchTerm=react&type=full-time&city=dhaka&page=1&limit=20
 const searchJobs = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.searchJobs(
-    req.query as unknown as IJobListingQuery,
+    req.query as IJobListingQuery,
   );
 
   sendResponse(res, {
@@ -45,9 +40,10 @@ const searchJobs = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /jobs/slug/:slug
 const getJobBySlug = catchAsync(async (req: Request, res: Response) => {
-  const result = await jobListingService.getJobBySlug(req.params.slug);
+  const result = await jobListingService.getJobBySlug(
+    req.params.slug as string,
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -57,9 +53,8 @@ const getJobBySlug = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /jobs/:jobId
 const getJobById = catchAsync(async (req: Request, res: Response) => {
-  const result = await jobListingService.getJobById(req.params.jobId);
+  const result = await jobListingService.getJobById(req.params.jobId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -69,11 +64,11 @@ const getJobById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /companies/:companyId/jobs — employer's own job listings
 const getCompanyJobs = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.getCompanyJobs(
-    req.params.companyId,
-    req.query as unknown as IJobListingQuery,
+    req.params.companyId as string,
+    { userId: getUserIdFromReq(req), role: getUserRoleFromReq(req) },
+    req.query as ICompanyJobsQuery,
   );
 
   sendResponse(res, {
@@ -85,13 +80,14 @@ const getCompanyJobs = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// PATCH /jobs/:jobId
 const updateJob = catchAsync(async (req: Request, res: Response) => {
-  const { companyId, ...payload } = unwrap(req.body);
+  // companyId (if sent by older clients) is ignored — the company is
+  // derived from the job itself.
+  const { companyId: _ignored, ...payload } = req.body;
+
   const result = await jobListingService.updateJob(
-    req.params.jobId,
+    req.params.jobId as string,
     getUserIdFromReq(req),
-    companyId,
     payload,
   );
 
@@ -103,13 +99,11 @@ const updateJob = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// PATCH /jobs/:jobId/status
 const updateJobStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.updateJobStatus(
-    req.params.jobId,
+    req.params.jobId as string,
     getUserIdFromReq(req),
-    unwrap(req.body).companyId,
-    unwrap(req.body).status as JobStatus,
+    req.body.status,
   );
 
   sendResponse(res, {
@@ -120,12 +114,10 @@ const updateJobStatus = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// DELETE /jobs/:jobId
 const deleteJob = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.deleteJob(
-    req.params.jobId,
+    req.params.jobId as string,
     getUserIdFromReq(req),
-    unwrap(req.body).companyId,
   );
 
   sendResponse(res, {
@@ -136,11 +128,10 @@ const deleteJob = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// PATCH /jobs/:jobId/featured — admin only
 const toggleFeatured = catchAsync(async (req: Request, res: Response) => {
   const result = await jobListingService.toggleFeatured(
-    req.params.jobId,
-    unwrap(req.body).isFeatured,
+    req.params.jobId as string,
+    req.body.isFeatured,
   );
 
   sendResponse(res, {

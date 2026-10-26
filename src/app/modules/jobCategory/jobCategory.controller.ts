@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { sendResponse } from '../../utils/sendResponse';
 import { jobCategoryService } from './jobCategory.service';
@@ -6,7 +5,6 @@ import catchAsync from '../../utils/catchAsync';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 
 const createCategory = catchAsync(async (req: Request, res: Response) => {
-
   const result = await jobCategoryService.createCategory(req.body);
 
   sendResponse(res, {

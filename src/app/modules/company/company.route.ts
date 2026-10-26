@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequestBody } from '../../middlewares/validateRequest';
+import {
+  validateRequestBody,
+  validateRequestQuery,
+} from '../../middlewares/validateRequest';
 import { companyController } from './company.controller';
 import { companyValidation } from './company.validation';
 import { UserRole } from '../user/user.interface';
@@ -18,8 +21,12 @@ router.post(
 // Get own company — employer only
 router.get('/me', checkAuth(UserRole.EMPLOYER), companyController.getMyCompany);
 
-// Get by slug — public (seekers browsing companies)
-router.get('/', companyController.getSingleCompany);
+// Get by slug or id — public (seekers browsing companies)
+router.get(
+  '/',
+  validateRequestQuery(companyValidation.companyIdentifierQuerySchema),
+  companyController.getSingleCompany,
+);
 
 // Update own company — employer only
 router.patch(

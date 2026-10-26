@@ -25,6 +25,18 @@ const createSeekerProfile = async (
     );
   }
 
+  // A previously soft-deleted profile still occupies the unique userId index,
+  // so creating a new document would fail with a duplicate-key error.
+  // Restore it instead, applying the new data on top.
+  const restored = await SeekerProfile.findOneAndUpdate(
+    { userId, isActive: false },
+    { $set: { ...payload, isActive: true } },
+    { new: true, runValidators: true },
+  );
+  if (restored) {
+    return restored;
+  }
+
   const profile = await SeekerProfile.create({ ...payload, userId });
   return profile;
 };
@@ -63,14 +75,29 @@ const getProfileById = async (profileId: string, active: boolean = true) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Get all active profiles — for employer directory listing
+// Get profiles — paginated employer directory listing
 // ─────────────────────────────────────────────────────────────
-const getAllProfiles = async (active: boolean = true) => {
-  const profiles = await SeekerProfile.find({ isActive: active }).populate(
-    'userId',
-    'name email',
-  );
-  return profiles;
+const getAllProfiles = async (
+  active: boolean = true,
+  pagination: { page?: unknown; limit?: unknown } = {},
+) => {
+  const page = Math.max(1, Number(pagination.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(pagination.limit) || 20));
+  const filter = { isActive: active };
+
+  const [profiles, total] = await Promise.all([
+    SeekerProfile.find(filter)
+      .sort({ profileCompleteness: -1, updatedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate('userId', 'name email'),
+    SeekerProfile.countDocuments(filter),
+  ]);
+
+  return {
+    profiles,
+    meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+  };
 };
 
 // ─────────────────────────────────────────────────────────────

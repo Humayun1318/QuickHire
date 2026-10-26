@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import { httpUrl } from '../../shared/validation/common.validation';
+
 // ─────────────────────────────────────────────────────────────
-// Create resume — seeker uploads a new resume
+// Create — title + an http(s) link to the resume file.
+// File upload itself is out of scope: the client uploads to a storage
+// provider and sends the resulting URL.
 // ─────────────────────────────────────────────────────────────
 const createResumeSchema = z.object({
   title: z
@@ -8,28 +12,22 @@ const createResumeSchema = z.object({
     .trim()
     .min(1, 'Resume title is required')
     .max(80, 'Resume title cannot exceed 80 characters'),
-  // File URL — the frontend uploads to the file-storage integration
-  // and sends back the public URL
-  fileUrl: z
+  fileUrl: httpUrl('Invalid file URL'),
+});
+
+// ─────────────────────────────────────────────────────────────
+// Update — rename or replace the file URL
+// ─────────────────────────────────────────────────────────────
+const updateResumeSchema = z.object({
+  title: z
     .string()
     .trim()
-    .min(1, 'Resume file URL is required')
-    .url('Invalid file URL'),
+    .min(1, 'Resume title is required')
+    .max(80, 'Resume title cannot exceed 80 characters')
+    .optional(),
+  fileUrl: httpUrl('Invalid file URL').optional(),
 });
-// ─────────────────────────────────────────────────────────────
-// Update resume — title and file URL are the only editable fields
-// ─────────────────────────────────────────────────────────────
-const updateResumeSchema = z
-  .object({
-    title: z
-      .string()
-      .trim()
-      .min(1, 'Resume title is required')
-      .max(80, 'Resume title cannot exceed 80 characters')
-      .optional(),
-    fileUrl: z.string().trim().url('Invalid file URL').optional(),
-  })
-  .partial();
+
 export const resumeValidation = {
   createResumeSchema,
   updateResumeSchema,

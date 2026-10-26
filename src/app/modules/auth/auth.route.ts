@@ -1,66 +1,48 @@
-import { NextFunction, Request, Response, Router } from 'express';
+import { Router } from 'express';
 import { authController } from './auth.controller';
 import { validateRequestBody } from '../../middlewares/validateRequest';
 import { authValidation } from './auth.validation';
 import { checkAuth } from '../../middlewares/checkAuth';
 import { UserRole } from '../user/user.interface';
-import passport from 'passport';
-import { createUserZodSchema } from '../user/user.validation';
+import { authLimiter } from '../../middlewares/rateLimiter';
 
 const router = Router();
 
-// User registration route________________________________
+// User registration (seeker or employer only)
 router.post(
   '/register',
-  validateRequestBody(createUserZodSchema),
+  authLimiter,
+  validateRequestBody(authValidation.registerSchema),
   authController.createUser,
 );
 
-// Authentication routes________________________________
+// Email + password login
 router.post(
   '/login',
+  authLimiter,
   validateRequestBody(authValidation.loginSchema),
-  authController.createAuth,
+  authController.credentialsLogin,
 );
 
-// Token refresh and logout routes________________________
+// Token refresh and logout
 router.post(
   '/refresh-token',
+  authLimiter,
   authController.getNewAccessTokenUsingRefreshToken,
 );
 router.post('/logout', authController.logout);
 
-// Protected route for changing password___________________
+// Change password (any authenticated role)
 router.post(
   '/change-password',
+  authLimiter,
   checkAuth(...Object.values(UserRole)),
+  validateRequestBody(authValidation.changePasswordSchema),
   authController.changePassword,
 );
 
-// Google OAuth routes _____________________________________
-router.get(
-  '/google',
-  async (req: Request, res: Response, next: NextFunction) => {
-    const redirect = req.query.redirect || '/';
-    const role = req.query.role || UserRole.SEEKER; // default to SEEKER if role is not provided
-    const state = JSON.stringify({
-      redirect,
-      role,
-    });
-    passport.authenticate('google', {
-      scope: ['profile', 'email'],
-      state,
-    })(req, res, next);
-  },
-);
-
-// Callback route for Google OAuth
+// Google OAuth (only active when GOOGLE_* env vars are configured)
+router.get('/google', authLimiter, authController.googleLogin);
 router.get('/google/callback', authController.googleCallbackController);
-//________________________________________________________
-
-router.patch('/update/:id', authController.updateAuth);
-router.delete('/delete/:id', authController.deleteAuth);
-router.get('/:id', authController.getAuthById);
-router.get('/', authController.getAllAuth);
 
 export const authRoutes = router;

@@ -1,6 +1,9 @@
 import express from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequestBody, validateRequestQuery } from '../../middlewares/validateRequest';
+import {
+  validateRequestBody,
+  validateRequestQuery,
+} from '../../middlewares/validateRequest';
 import { jobCategoryController } from './jobCategory.controller';
 import { jobCategoryValidation } from './jobCategory.validation';
 import { UserRole } from '../user/user.interface';
@@ -25,30 +28,30 @@ router.get('/:categoryId/children', jobCategoryController.getChildCategories);
 
 // Flat list for admin panel management
 router.get(
-    '/',
-    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequestQuery(jobCategoryValidation.getCategoryQuerySchema),
-    jobCategoryController.getAllCategories,
+  '/',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestQuery(jobCategoryValidation.getCategoryQuerySchema),
+  jobCategoryController.getAllCategories,
 );
 
 router.post(
-    '/',
-    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequestBody(jobCategoryValidation.createCategorySchema),
-    jobCategoryController.createCategory,
+  '/',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestBody(jobCategoryValidation.createCategorySchema),
+  jobCategoryController.createCategory,
 );
 
 router.patch(
-    '/:categoryId',
-    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequestBody(jobCategoryValidation.updateCategorySchema),
-    jobCategoryController.updateCategory,
+  '/:categoryId',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestBody(jobCategoryValidation.updateCategorySchema),
+  jobCategoryController.updateCategory,
 );
 
 router.delete(
-    '/:categoryId',
-    checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    jobCategoryController.deleteCategory,
+  '/:categoryId',
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  jobCategoryController.deleteCategory,
 );
 
 export const jobCategoryRoutes = router;

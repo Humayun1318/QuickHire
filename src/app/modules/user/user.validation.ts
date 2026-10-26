@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AccountStatus, AuthProvider, UserRole } from './user.interface';
+import { queryBuilderSchema } from '../../shared/validation/queryBuilderSchema';
 
 export const passwordValidationSchema = z
   .string({
@@ -9,6 +10,11 @@ export const passwordValidationSchema = z
         : 'Password must be a string',
   })
   .min(8, { message: 'Password must be at least 8 characters long' })
+  // bcrypt only uses the first 72 bytes of the input; longer passwords would
+  // be silently truncated.
+  .refine((val) => Buffer.byteLength(val, 'utf8') <= 72, {
+    message: 'Password must not exceed 72 bytes',
+  })
   .refine((val) => /[A-Z]/.test(val), {
     message: 'Password must contain at least one uppercase letter',
   })
@@ -19,7 +25,7 @@ export const passwordValidationSchema = z
     message: 'Password must contain at least one number',
   })
   .refine((val) => /[@$!%*?&]/.test(val), {
-    message: 'Password must contain at least one special character',
+    message: 'Password must contain at least one special character (@$!%*?&)',
   });
 
 export const emailValidationSchema = z
@@ -30,6 +36,7 @@ export const emailValidationSchema = z
         : 'Email must be a string',
   })
   .trim()
+  .max(254, 'Email is too long')
   .superRefine((val, ctx) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -60,7 +67,8 @@ export const authProviderZodSchema = z.object({
 });
 
 // ----------------------
-// Create User Schema
+// Create User Schema (base for registration — see auth.validation.ts, which
+// adds the restricted `role` field)
 // ----------------------
 export const createUserZodSchema = z.object({
   name: z
@@ -79,87 +87,37 @@ export const createUserZodSchema = z.object({
   password: passwordValidationSchema,
 
   phone: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Phone number is required'
-          : 'Phone must be a string',
-    })
+    .string({ error: 'Phone must be a string' })
+    .trim()
     .min(10, 'Phone must be at least 10 digits')
     .max(15, 'Phone number too long')
+    .regex(
+      /^\+?[\d\s()-]+$/,
+      'Phone may only contain digits, spaces, +, -, ( )',
+    )
     .optional()
     .nullable(),
 
   avatar: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? 'Avatar URL is required'
-          : 'Avatar must be a string',
-    })
+    .string({ error: 'Avatar must be a string' })
+    .trim()
+    .max(2048, 'Avatar URL is too long')
     .refine((val) => val === '' || /^https?:\/\/\S+$/.test(val), {
       message: 'Avatar must be a valid URL',
     })
     .optional()
     .nullable(),
-
-  role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
-
-  // auths: z
-  //   .array(authProviderZodSchema, {
-  //     error: (issue) => {
-  //       if (issue.input === undefined)
-  //         return 'Authentication provider is required';
-  //       return 'Auths must be an array';
-  //     },
-  //   })
-  //   .min(1, 'At least one authentication provider is required'),
 });
-// .superRefine((data, ctx) => {
-//   if (data.auths) {
-//     const hasLocal = data.auths.some(
-//       (entry) => entry.provider === AuthProvider.LOCAL,
-//     );
-
-//     if (hasLocal && !data.password) {
-//       ctx.addIssue({
-//         code: 'custom',
-//         message: 'Password is required for local authentication',
-//         path: ['password'],
-//       });
-//     }
-
-//     if (!hasLocal && data.password) {
-//       ctx.addIssue({
-//         code: 'custom',
-//         message: 'Password should not be provided for OAuth users',
-//         path: ['password'],
-//       });
-//     }
-
-//     const providers = data.auths.map((entry) => entry.provider);
-
-//     if (new Set(providers).size !== providers.length) {
-//       ctx.addIssue({
-//         code: 'custom',
-//         message: 'Duplicate auth providers are not allowed',
-//         path: ['auths'],
-//       });
-//     }
-//   }
-// });
 
 // ----------------------
-// Update User Schema
+// Admin user list query (GET /users)
 // ----------------------
-export const updateUserZodSchema = createUserZodSchema.partial().refine(
-  (data) => {
-    if ('email' in data && data.email === '') return false;
-    if ('password' in data && data.password === '') return false;
-    return true;
-  },
-  {
-    message: 'Email and password cannot be empty strings when updating',
-    path: ['email', 'password'],
-  },
-);
+export const userQuerySchema = queryBuilderSchema
+  .extend({
+    role: z.enum(Object.values(UserRole) as [string, ...string[]]).optional(),
+    status: z
+      .enum(Object.values(AccountStatus) as [string, ...string[]])
+      .optional(),
+    isVerified: z.enum(['true', 'false']).optional(),
+  })
+  .strict();

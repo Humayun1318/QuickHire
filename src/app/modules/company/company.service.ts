@@ -11,6 +11,7 @@ import { CompanyMember } from '../companyMember/companyMember.models';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import mongoose from 'mongoose';
 import { requireCompanyRole } from './company.authorization';
+import { jobListingService } from '../jobListing/jobListing.service';
 
 // ─────────────────────────────────────────────────────────────
 // Create — one company per employer
@@ -51,10 +52,20 @@ const createCompany = async (ownerId: string, payload: Partial<ICompany>) => {
     await session.commitTransaction();
     return company;
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    // A concurrent create hit the partial unique index on ownerId.
+    if (
+      (err as { code?: number; keyPattern?: Record<string, unknown> }).code ===
+        11000 &&
+      (err as { keyPattern?: Record<string, unknown> }).keyPattern?.ownerId
+    ) {
+      throw new AppError(HTTP_STATUS_CODE.CONFLICT, COMPANY_ALREADY_EXISTS);
+    }
     throw err;
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -114,6 +125,12 @@ const updateCompany = async (
   userId: string,
   payload: Partial<ICompany>,
 ) => {
+  // Soft-deleted companies can no longer be edited
+  const company = await Company.isCompanyExists(companyId);
+  if (!company) {
+    throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, COMPANY_NOT_FOUND);
+  }
+
   // Check whether the user belongs to this company
   const member = await requireCompanyRole(companyId, userId, [
     CompanyMemberRole.OWNER,
@@ -159,6 +176,11 @@ const deleteCompany = async (companyId: string, ownerId: string) => {
   }
 
   await Company.findByIdAndUpdate(companyId, { $set: { isActive: false } });
+
+  // A deleted company's job listings must no longer be visible or accept
+  // applications.
+  await jobListingService.deactivateCompanyJobs(companyId);
+
   return { message: 'Company deleted successfully' };
 };
 

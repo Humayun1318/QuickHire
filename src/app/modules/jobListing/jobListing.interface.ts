@@ -12,15 +12,15 @@ import {
 // ─────────────────────────────────────────────────────────────
 
 export interface IJobSalary {
-  min?:          number;
-  max?:          number;
-  currency:      SalaryCurrency;
-  isNegotiable:  boolean;
-  isVisible:     boolean; // some employers hide salary range
+  min?: number;
+  max?: number;
+  currency: SalaryCurrency;
+  isNegotiable: boolean;
+  isVisible: boolean; // some employers hide salary range
 }
 
 export interface IJobLocation {
-  city?:    string;
+  city?: string;
   country?: string;
 }
 
@@ -29,29 +29,29 @@ export interface IJobLocation {
 // ─────────────────────────────────────────────────────────────
 
 export interface IJobListing {
-  companyId:        Types.ObjectId;  // FK → companies
-  postedBy:         Types.ObjectId;  // FK → users (the member who posted)
-  categoryId?:      Types.ObjectId;  // FK → jobCategories
-  title:            string;
-  slug:             string;          // auto-generated, unique
-  description:      string;
-  requirements?:    string[];        // bullet-point requirements
-  responsibilities?: string[];       // bullet-point responsibilities
-  skills:           string[];        // required skill tags
-  type:             JobType;
-  workMode:         WorkMode;
+  companyId: Types.ObjectId; // FK → companies
+  postedBy: Types.ObjectId; // FK → users (the member who posted)
+  categoryId?: Types.ObjectId; // FK → jobCategories
+  title: string;
+  slug: string; // auto-generated, unique
+  description: string;
+  requirements?: string[]; // bullet-point requirements
+  responsibilities?: string[]; // bullet-point responsibilities
+  skills: string[]; // required skill tags
+  type: JobType;
+  workMode: WorkMode;
   experienceLevel?: ExperienceLevel;
-  salary?:          IJobSalary;
-  location?:        IJobLocation;
-  status:           JobStatus;
-  isFeatured:       boolean;         // admin-promoted listings
-  expiresAt:        Date;
+  salary?: IJobSalary;
+  location?: IJobLocation;
+  status: JobStatus;
+  isFeatured: boolean; // admin-promoted listings
+  expiresAt: Date;
   // Cached counters — avoid aggregation queries on every list render
-  viewCount:        number;
+  viewCount: number;
   applicationCount: number;
-  isActive:         boolean;
-  createdAt?:       Date;
-  updatedAt?:       Date;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ export interface IJobListingDocument extends IJobListing, Document {}
 export interface IJobListingModel extends Model<IJobListingDocument> {
   isJobExists(jobId: string): Promise<IJobListingDocument | null>;
   isOwnedByCompany(
-    jobId:     string,
+    jobId: string,
     companyId: string,
   ): Promise<IJobListingDocument | null>;
 }
@@ -72,20 +72,27 @@ export interface IJobListingModel extends Model<IJobListingDocument> {
 // Query params interface — for search/filter endpoint
 // ─────────────────────────────────────────────────────────────
 
+// Raw (already validated) query-string values for GET /jobs.
 export interface IJobListingQuery {
-  searchTerm?:     string;
-  categoryId?:     string;
-  type?:           JobType;
-  workMode?:       WorkMode;
+  searchTerm?: string;
+  categoryId?: string;
+  type?: JobType;
+  workMode?: WorkMode;
   experienceLevel?: ExperienceLevel;
-  city?:           string;
-  country?:        string;
-  salaryMin?:      number;
-  salaryMax?:      number;
-  isFeatured?:     boolean;
-  companyId?:      string;
-  status?:         JobStatus;
-  page?:           number;
-  limit?:          number;
-  sortBy?:         string; // newest | salary | relevance
+  city?: string;
+  country?: string;
+  salaryMin?: string;
+  salaryMax?: string;
+  isFeatured?: 'true' | 'false';
+  companyId?: string;
+  page?: string;
+  limit?: string;
+  sortBy?: string; // newest | salary | relevance
+}
+
+// Query for the company dashboard listing (GET /jobs/company/:companyId).
+export interface ICompanyJobsQuery {
+  status?: JobStatus;
+  page?: string;
+  limit?: string;
 }

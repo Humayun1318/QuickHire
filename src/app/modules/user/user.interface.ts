@@ -46,6 +46,7 @@ export interface IUser extends Document {
   status: AccountStatus;
   isVerified: boolean;
   lastLogin?: Date;
+  tokenVersion: number;
 
   // ── Cross-module FK References ───────────────────
   seekerProfileId?: Types.ObjectId;
@@ -72,7 +73,7 @@ export interface IUserMethods {
 // STATIC METHODS INTERFACE (Model-level)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export interface IUserModel extends Model<IUser, {}, IUserMethods> {
+export interface IUserModel extends Model<IUser, object, IUserMethods> {
   // findByEmail — email দিয়ে user খোঁজে, password সহ (login এর জন্য)।
   findByEmail(email: string): Promise<(IUser & IUserMethods) | null>;
 

@@ -4,9 +4,13 @@ import {
   CATEGORY_NOT_FOUND,
   MAX_CATEGORY_DEPTH,
 } from './jobCategory.constants';
-import { IJobCategory, IJobCategoryDocument } from './jobCategory.interface';
+import { IJobCategory } from './jobCategory.interface';
 import { JobCategory } from './jobCategory.models';
-import { buildBreadcrumb, buildCategoryTree } from './jobCategory.utils';
+import {
+  buildBreadcrumb,
+  buildCategoryTree,
+  TLeanCategory,
+} from './jobCategory.utils';
 import AppError from '../../errorHelpers/AppError';
 import { HTTP_STATUS_CODE } from '../../utils/HTTP_STATUS_CODE';
 import { Types } from 'mongoose';
@@ -92,9 +96,10 @@ const getAllCategories = async (query: Record<string, unknown>) => {
 // ─────────────────────────────────────────────────────────────
 
 const getCategoryTree = async () => {
-  const all = await JobCategory.find({ isActive: true }).lean();
-  // lean() returns plain objects — buildCategoryTree handles both
-  return buildCategoryTree(all as IJobCategoryDocument[]);
+  const all = await JobCategory.find({ isActive: true })
+    .sort({ name: 1 })
+    .lean<TLeanCategory[]>();
+  return buildCategoryTree(all);
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -130,7 +135,7 @@ const getCategoryBySlug = async (slug: string) => {
     throw new AppError(HTTP_STATUS_CODE.NOT_FOUND, CATEGORY_NOT_FOUND);
   }
 
-  const breadcrumb = await buildBreadcrumb((category._id as string).toString());
+  const breadcrumb = await buildBreadcrumb(String(category._id));
   return { category, breadcrumb };
 };
 
@@ -175,6 +180,21 @@ const updateCategory = async (
       throw new AppError(
         HTTP_STATUS_CODE.BAD_REQUEST,
         'A category cannot be its own parent',
+      );
+    }
+
+    // Moving a category that has sub-categories would leave the children's
+    // stored depth stale and could create a parent cycle (moving a category
+    // under its own child). Keep the hierarchy consistent by requiring the
+    // sub-categories to be moved first.
+    const hasChildren = await JobCategory.exists({
+      parentId: category._id,
+      isActive: true,
+    });
+    if (hasChildren) {
+      throw new AppError(
+        HTTP_STATUS_CODE.BAD_REQUEST,
+        'Cannot move a category that has sub-categories. Move its sub-categories first.',
       );
     }
 
@@ -257,7 +277,7 @@ const incrementJobCount = async (categoryId: string) => {
 };
 
 const decrementJobCount = async (categoryId: string) => {
-  await JobCategory.findByIdAndUpdate(
+  await JobCategory.findOneAndUpdate(
     // Prevent going below 0 — safety guard against race conditions
     { _id: categoryId, jobCount: { $gt: 0 } },
     { $inc: { jobCount: -1 } },

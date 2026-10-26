@@ -1,18 +1,41 @@
-// Query builder for job search — builds MongoDB filter + sort objects
-// from incoming URL query params.
-// Kept in utils (not service) because it is pure transformation logic
-// with no DB calls or business rules.
-import { Types } from 'mongoose';
+import { SortOrder, Types } from 'mongoose';
 import { JobStatus } from './jobListing.constants';
 import { IJobListingQuery } from './jobListing.interface';
+import { escapeRegex } from '../../utils/escapeRegex';
+
+export const JOB_SEARCH_MAX_LIMIT = 50;
 
 export interface IBuiltJobQuery {
   filter: Record<string, unknown>;
-  sort: Record<string, unknown>;
+  sort: Record<string, SortOrder | { $meta: 'textScore' }>;
   skip: number;
   limit: number;
+  page: number;
 }
 
+const toNumber = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+export const buildPagination = (params: {
+  page?: unknown;
+  limit?: unknown;
+}) => {
+  const page = Math.max(1, Math.floor(toNumber(params.page) ?? 1));
+  const limit = Math.min(
+    JOB_SEARCH_MAX_LIMIT,
+    Math.max(1, Math.floor(toNumber(params.limit) ?? 20)),
+  );
+  return { page, limit, skip: (page - 1) * limit };
+};
+
+/**
+ * Builds the MongoDB filter/sort/pagination for the PUBLIC job search.
+ * Only published, active, non-expired jobs are ever returned — a client
+ * cannot ask for drafts or closed jobs of other companies.
+ */
 export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
   const {
     searchTerm,
@@ -26,84 +49,64 @@ export const buildJobQuery = (params: IJobListingQuery): IBuiltJobQuery => {
     salaryMax,
     isFeatured,
     companyId,
-    status,
-    page = 1,
-    limit = 20,
     sortBy = 'newest',
   } = params;
 
   const filter: Record<string, unknown> = {
     isActive: true,
+    status: JobStatus.PUBLISHED,
+    expiresAt: { $gt: new Date() },
   };
 
-  // Default to published + not expired for public queries
-  // Service can override status for employer/admin queries
-  if (status) {
-    filter.status = status;
-  } else {
-    filter.status = JobStatus.PUBLISHED;
-    filter.expiresAt = { $gt: new Date() }; // not yet expired
-  }
-
-  // Full-text search — uses the compound text index (title + description + skills)
-  // $text with $search enables relevance scoring via { score: { $meta: 'textScore' } }
+  // Full-text search over the weighted text index (title > skills > description)
   if (searchTerm) {
-    filter.$text = { $search: searchTerm };
+    filter.$text = { $search: String(searchTerm) };
   }
 
-  if (categoryId) {
-    filter.categoryId = new Types.ObjectId(categoryId);
-  }
-
+  if (categoryId) filter.categoryId = new Types.ObjectId(String(categoryId));
+  if (companyId) filter.companyId = new Types.ObjectId(String(companyId));
   if (type) filter.type = type;
   if (workMode) filter.workMode = workMode;
   if (experienceLevel) filter.experienceLevel = experienceLevel;
-  if (isFeatured !== undefined) filter.isFeatured = isFeatured;
-  if (companyId) filter.companyId = new Types.ObjectId(companyId);
 
-  // Location — case-insensitive regex for partial match
-  // e.g. "dha" matches "Dhaka"
+  if (isFeatured !== undefined) {
+    filter.isFeatured = String(isFeatured) === 'true';
+  }
+
+  // Case-insensitive partial match; input is escaped so it is literal text.
   if (city) {
-    filter['location.city'] = { $regex: city, $options: 'i' };
+    filter['location.city'] = {
+      $regex: escapeRegex(String(city)),
+      $options: 'i',
+    };
   }
   if (country) {
-    filter['location.country'] = { $regex: country, $options: 'i' };
+    filter['location.country'] = {
+      $regex: escapeRegex(String(country)),
+      $options: 'i',
+    };
   }
 
-  // Salary range filter — each bound filters its own field.
-  // The previous version applied both bounds to 'salary.min', which
-  // accepted jobs whose max salary exceeded salaryMax. Fixed by
-  // keeping the bounds strictly separated:
-  //   salaryMin → salary.min must be at least this
-  //   salaryMax → salary.max must be at most this
-  if (salaryMin !== undefined) {
-    filter['salary.min'] = { $gte: salaryMin };
+  // Jobs whose salary range lies within the requested bounds.
+  const minSalary = toNumber(salaryMin);
+  const maxSalary = toNumber(salaryMax);
+  if (minSalary !== undefined) {
+    filter['salary.min'] = { $gte: minSalary };
   }
-  if (salaryMax !== undefined) {
-    filter['salary.max'] = { $lte: salaryMax };
+  if (maxSalary !== undefined) {
+    filter['salary.max'] = { $lte: maxSalary };
   }
 
-  // ── Sort ──────────────────────────────────────────────────
-  let sort: Record<string, unknown> = {};
-
+  let sort: IBuiltJobQuery['sort'];
   if (sortBy === 'relevance' && searchTerm) {
-    // Sort by text relevance score when doing keyword search
-    // { score: { $meta: 'textScore' } } requires the $text filter
     sort = { score: { $meta: 'textScore' } };
   } else if (sortBy === 'salary') {
-    sort = { 'salary.max': -1 }; // highest max salary first
+    sort = { 'salary.max': -1, createdAt: -1 }; // highest max salary first
   } else {
-    // Default: newest first, featured jobs float to top
-    sort = { isFeatured: -1, createdAt: -1 };
+    sort = { isFeatured: -1, createdAt: -1 }; // newest, featured first
   }
 
-  const pageNum = Math.max(1, Number(page));
-  const limitNum = Math.min(50, Math.max(1, Number(limit))); // cap at 50
+  const { page, limit, skip } = buildPagination(params);
 
-  return {
-    filter,
-    sort,
-    skip: (pageNum - 1) * limitNum,
-    limit: limitNum,
-  };
+  return { filter, sort, skip, limit, page };
 };

@@ -47,12 +47,6 @@ const resumeSchema = new Schema<IResumeDocument, IResumeModel>(
   {
     timestamps: true,
     versionKey: false,
-    toJSON: {
-      transform: (_doc, ret) => {
-        delete ret.__v;
-        return ret;
-      },
-    },
   },
 );
 // ─────────────────────────────────────────────────────────────

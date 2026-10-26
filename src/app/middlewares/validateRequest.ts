@@ -1,42 +1,37 @@
 import { NextFunction, Request, Response } from 'express';
-import { ZodObject } from 'zod';
+import { ZodType } from 'zod';
 
+/**
+ * Validates req.body against a Zod schema and replaces it with the parsed
+ * result. Unknown keys are stripped by z.object(), which prevents mass
+ * assignment of fields such as role, status or ownerId.
+ *
+ * Express 5 leaves req.body undefined when no body was sent, so it is
+ * validated as an empty object in that case.
+ */
 export const validateRequestBody =
-  (zodSchema: ZodObject<any>) =>
-    async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        /**
-         * Handle multipart/form-data bodies
-         * Some form submissions stringify JSON data in req.body.data
-         * This section detects and parses that data back into an object
-         *
-         * Fallback: If no .data field exists, use req.body as-is
-         */
-        if (req.body.data) {
-          // Parse stringified JSON from multipart form submission
-          req.body = JSON.parse(req.body.data);
-        }
-        // Validate request body against the provided Zod schema
-        req.body = await zodSchema.parseAsync(req.body);
+  (zodSchema: ZodType) =>
+  async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      req.body = await zodSchema.parseAsync(req.body ?? {});
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
 
-        // Validation passed - proceed to next middleware/route handler
-        next();
-      } catch (error) {
-        next(error);
-      }
-    };
-
+/**
+ * Validates req.query against a Zod schema. In Express 5 req.query is a
+ * read-only getter, so the parsed value is not written back; handlers keep
+ * reading the (now validated) raw query strings.
+ */
 export const validateRequestQuery =
-  (zodSchema: ZodObject<any>) =>
-    async (req: Request, res: Response, next: NextFunction) => {
-      try {
-
-        // Validate request query against the provided Zod schema
-        await zodSchema.parseAsync(req.query);
-
-        // Validation passed - proceed to next middleware/route handler
-        next();
-      } catch (error) {
-        next(error);
-      }
-    };
+  (zodSchema: ZodType) =>
+  async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      await zodSchema.parseAsync(req.query);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };

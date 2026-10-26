@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequestBody } from '../../middlewares/validateRequest';
+import {
+  validateRequestBody,
+  validateRequestQuery,
+} from '../../middlewares/validateRequest';
 import { companyMemberController } from './companyMember.controller';
 import { companyMemberValidation } from './companyMember.validation';
 import { UserRole } from '../user/user.interface';
+import { companyValidation } from '../company/company.validation';
 
 // mergeParams: true — allows access to :companyId from the parent router
 const router = Router({ mergeParams: true });
@@ -20,6 +24,7 @@ router.post(
 router.get(
   '/',
   checkAuth(UserRole.EMPLOYER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestQuery(companyValidation.companyIdentifierQuerySchema),
   companyMemberController.getCompanyMembers,
 );
 

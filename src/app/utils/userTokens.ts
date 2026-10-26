@@ -1,20 +1,25 @@
-import { JwtPayload } from 'jsonwebtoken';
 import { envVars } from '../config/env';
 import { IUser } from '../modules/user/user.interface';
 import { generateToken, verifyToken } from './jwt';
 import { User } from '../modules/user/user.models';
 import AppError from '../errorHelpers/AppError';
 import httpStatus from 'http-status-codes';
-import { validateUserStatus } from './validateUserStatus';
+import { validateTokenVersion, validateUserStatus } from './validateUserStatus';
 
-export const createUserTokens = (
-  user: Pick<IUser, '_id' | 'email' | 'role'>,
-) => {
-  const jwtPayload = {
-    userId: user._id,
-    email: user.email,
-    role: user.role,
-  };
+type TokenUser = Pick<IUser, '_id' | 'email' | 'role'> & {
+  tokenVersion?: number;
+};
+
+const buildJwtPayload = (user: TokenUser) => ({
+  userId: String(user._id),
+  email: user.email,
+  role: user.role,
+  tv: user.tokenVersion ?? 0,
+});
+
+export const createUserTokens = (user: TokenUser) => {
+  const jwtPayload = buildJwtPayload(user);
+
   const accessToken = generateToken(
     jwtPayload,
     envVars.JWT_ACCESS_SECRET,
@@ -33,32 +38,30 @@ export const createUserTokens = (
   };
 };
 
+/**
+ * Issues a new access token from a valid refresh token. The user is reloaded
+ * so that the new token reflects the current role/status, and refresh tokens
+ * issued before a password change are rejected.
+ */
 export const createNewAccessTokenByRefreshToken = async (
   refreshToken: string,
 ) => {
   const verifiedRefreshToken = verifyToken(
     refreshToken,
     envVars.JWT_REFRESH_SECRET,
-  ) as JwtPayload;
+  );
 
-  const isUserExist = await User.findOne({ email: verifiedRefreshToken.email });
-  if (!isUserExist) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'User does not exist');
+  const user = await User.findById(verifiedRefreshToken.userId);
+  if (!user) {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'User no longer exists');
   }
 
-  // Check if user is verified, active, or blocked
-  validateUserStatus(isUserExist);
+  validateUserStatus(user);
+  validateTokenVersion(user, verifiedRefreshToken);
 
-  const jwtPayload = {
-    userId: isUserExist._id,
-    email: isUserExist.email,
-    role: isUserExist.role,
-  };
-  const accessToken = generateToken(
-    jwtPayload,
+  return generateToken(
+    buildJwtPayload(user),
     envVars.JWT_ACCESS_SECRET,
     envVars.JWT_ACCESS_EXPIRES,
   );
-
-  return accessToken;
 };

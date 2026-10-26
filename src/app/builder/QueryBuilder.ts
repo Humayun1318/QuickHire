@@ -1,708 +1,576 @@
+import { FilterQuery, Model, Types } from 'mongoose';
 import {
-    FilterQuery,
-    Model,
-    Types,
-} from "mongoose";
-import {
-    DEFAULT_LIMIT,
-    DEFAULT_PAGE,
-    FIELDS_QUERY_KEY,
-    FilterConfig,
-    LIMIT_QUERY_KEY, MAX_LIMIT,
-    ModelQuery,
-    PAGE_QUERY_KEY, PaginationMeta, QueryParams, SEARCH_QUERY_KEY,
-    SORT_QUERY_KEY
-} from "../shared/queryBuilder";
-
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  FIELDS_QUERY_KEY,
+  FilterConfig,
+  LIMIT_QUERY_KEY,
+  MAX_LIMIT,
+  ModelQuery,
+  PAGE_QUERY_KEY,
+  PaginationMeta,
+  QueryParams,
+  SEARCH_QUERY_KEY,
+  SORT_QUERY_KEY,
+} from '../shared/queryBuilder';
+import { escapeRegex } from '../utils/escapeRegex';
 
 export class QueryBuilder<T> {
+  private modelQuery: ModelQuery<T>;
+  private model: Model<T>;
+  private queryParams: QueryParams;
+  private config: FilterConfig;
+  private internalFilter: FilterQuery<T> = {};
+  private page = DEFAULT_PAGE;
+  private limit = DEFAULT_LIMIT;
+  private skip = 0;
 
-    private modelQuery: ModelQuery<T>;
-    private model: Model<T>;
-    private queryParams: QueryParams;
-    private config: FilterConfig;
-    private internalFilter: FilterQuery<T> = {};
-    private page = DEFAULT_PAGE;
-    private limit = DEFAULT_LIMIT;
-    private skip = 0;
+  constructor(
+    model: Model<T>,
+    modelQuery: ModelQuery<T>,
+    queryParams: QueryParams,
+    config: FilterConfig,
+  ) {
+    this.model = model;
+    this.modelQuery = modelQuery;
+    this.queryParams = queryParams;
+    this.config = config;
 
-    constructor(
-        model: Model<T>,
-        modelQuery: ModelQuery<T>,
-        queryParams: QueryParams,
-        config: FilterConfig
-    ) {
-        this.model = model;
-        this.modelQuery = modelQuery;
-        this.queryParams = queryParams;
-        this.config = config;
-
-        this.limit =
-            config.defaultLimit ?? DEFAULT_LIMIT;
-    }
-    /* ============================================================
+    this.limit = config.defaultLimit ?? DEFAULT_LIMIT;
+  }
+  /* ============================================================
                                 Helpers
     ============================================================ */
-    private getValue(key: string): unknown {
-        return this.queryParams[key];
+  private getValue(key: string): unknown {
+    return this.queryParams[key];
+  }
+  /**
+   * Get string query parameter
+   * Example:
+   * search="  react  "
+   *
+   * =>
+   *
+   * "react"
+   */
+  private getString(key: string): string {
+    const value = this.getValue(key);
+
+    return typeof value === 'string' ? value.trim() : '';
+  }
+  /**
+   * Convert query value into number
+   * Example:
+   * page="10"
+   * =>
+   * 10
+   */
+  private getNumber(key: string): number | undefined {
+    const value = this.getValue(key);
+
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : undefined;
     }
-    /**
-         * Get string query parameter
-         * Example:
-         * search="  react  "
-         *
-         * =>
-         *
-         * "react"
-    */
-    private getString(
-        key: string
-    ): string {
-        const value = this.getValue(key);
 
-        return typeof value === "string"
-            ? value.trim()
-            : "";
+    if (typeof value !== 'string') {
+      return undefined;
     }
-    /**
-         * Convert query value into number
-         * Example:
-         * page="10"
-         * =>
-         * 10
-    */
-    private getNumber(key: string): number | undefined {
-        const value = this.getValue(key);
 
-        if (typeof value === 'number') {
-            return Number.isFinite(value)
-                ? value
-                : undefined;
-        }
+    const normalized = value.trim();
 
-        if (typeof value !== 'string') {
-            return undefined;
-        }
-
-        const normalized = value.trim();
-
-        if (!normalized) {
-            return undefined;
-        }
-
-        const parsed = Number(normalized);
-
-        return Number.isFinite(parsed)
-            ? parsed
-            : undefined;
+    if (!normalized) {
+      return undefined;
     }
-    /**
-     * Convert query value into boolean
-     * Example:
-     *
-     * isActive="true"
-     *
-     * =>
-     *
-     * true
-     */
-    private getBoolean(key: string): boolean | undefined {
-        const value = this.getValue(key);
 
-        if (typeof value === 'boolean') {
-            return value;
-        }
+    const parsed = Number(normalized);
 
-        if (typeof value !== 'string') {
-            return undefined;
-        }
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  /**
+   * Convert query value into boolean
+   * Example:
+   *
+   * isActive="true"
+   *
+   * =>
+   *
+   * true
+   */
+  private getBoolean(key: string): boolean | undefined {
+    const value = this.getValue(key);
 
-        const normalized = value.trim().toLowerCase();
-
-        if (normalized === 'true') {
-            return true;
-        }
-
-        if (normalized === 'false') {
-            return false;
-        }
-
-        return undefined;
+    if (typeof value === 'boolean') {
+      return value;
     }
-    /**
-     * Convert comma separated string into array
-     * Example:
-     * skills=React,Node,Express
-     * =>
-     * ["React","Node","Express"]
-     */
-    private getArray(
-        key: string
-    ): string[] {
-        const value =
-            this.getString(key);
 
-        if (!value) {
-            return [];
-        }
-        return value
-            .split(",")
-            .map(item => item.trim())
-            .filter(Boolean);
+    if (typeof value !== 'string') {
+      return undefined;
     }
-    /**
-    * fromDate=2025-01-01
-    * =>
-    * Date("2025-01-01")
-    */
-    private getDate(key: string): Date | undefined {
-        const value = this.getValue(key);
 
-        if (value instanceof Date) {
-            return isNaN(value.getTime()) ? undefined : value;
-        }
+    const normalized = value.trim().toLowerCase();
 
-        if (typeof value !== 'string') {
-            return undefined;
-        }
-
-        const normalized = value.trim();
-
-        if (!normalized) {
-            return undefined;
-        }
-
-        const date = new Date(normalized);
-
-        return isNaN(date.getTime())
-            ? undefined
-            : date;
+    if (normalized === 'true') {
+      return true;
     }
-    /**
-     * Merge filter and apply mongoose query
-     * Example:
-     * {
-     *   status:"active"
-     * }
-     * =>
-     * MongoDB filter
-     */
-    private addFilter(
-        filter: FilterQuery<T>
-    ) {
-        this.internalFilter = {
-            ...this.internalFilter,
-            ...filter,
-        };
 
-        this.modelQuery =
-            this.modelQuery.find(
-                this.internalFilter
-            );
+    if (normalized === 'false') {
+      return false;
     }
-    /* ============================================================
+
+    return undefined;
+  }
+  /**
+   * Convert comma separated string into array
+   * Example:
+   * skills=React,Node,Express
+   * =>
+   * ["React","Node","Express"]
+   */
+  private getArray(key: string): string[] {
+    const value = this.getString(key);
+
+    if (!value) {
+      return [];
+    }
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  /**
+   * fromDate=2025-01-01
+   * =>
+   * Date("2025-01-01")
+   */
+  private getDate(key: string): Date | undefined {
+    const value = this.getValue(key);
+
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? undefined : value;
+    }
+
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const normalized = value.trim();
+
+    if (!normalized) {
+      return undefined;
+    }
+
+    const date = new Date(normalized);
+
+    return isNaN(date.getTime()) ? undefined : date;
+  }
+  /**
+   * Merge filter and apply mongoose query
+   * Example:
+   * {
+   *   status:"active"
+   * }
+   * =>
+   * MongoDB filter
+   */
+  private addFilter(filter: FilterQuery<T>) {
+    this.internalFilter = {
+      ...this.internalFilter,
+      ...filter,
+    };
+
+    this.modelQuery = this.modelQuery.find(this.internalFilter);
+  }
+  /* ============================================================
                                 Search
      ============================================================ */
-    /**
-         * Search keyword from searchable fields
-         * Example:
-         * search=john
-         * =>
-         * {
-         *   name: /john/i,
-         *   email: /john/i
-         * }
-    */
-    search() {
-        const keyword =
-            this.getString(SEARCH_QUERY_KEY);
-        if (!keyword) {
-            return this;
-        }
-
-        const searchableFields =
-            this.config.searchableFields ?? [];
-        if (!searchableFields.length) {
-            return this;
-        }
-
-        const conditions =
-            searchableFields.map(field => ({
-                [field]: {
-                    $regex: keyword,
-                    $options: "i",
-                },
-            } as FilterQuery<T>));
-
-        this.addFilter({
-            $or: conditions,
-        });
-        return this;
+  /**
+   * Search keyword from searchable fields
+   * Example:
+   * search=john
+   * =>
+   * {
+   *   name: /john/i,
+   *   email: /john/i
+   * }
+   */
+  search() {
+    const keyword = this.getString(SEARCH_QUERY_KEY);
+    if (!keyword) {
+      return this;
     }
-    /* ============================================================
+
+    const searchableFields = this.config.searchableFields ?? [];
+    if (!searchableFields.length) {
+      return this;
+    }
+
+    // The keyword is user input: escape regex metacharacters so it is
+    // matched literally (prevents regex injection / ReDoS patterns), and cap
+    // its length.
+    const escapedKeyword = escapeRegex(keyword.slice(0, 100));
+
+    const conditions = searchableFields.map(
+      (field) =>
+        ({
+          [field]: {
+            $regex: escapedKeyword,
+            $options: 'i',
+          },
+        }) as FilterQuery<T>,
+    );
+
+    this.addFilter({
+      $or: conditions,
+    });
+    return this;
+  }
+  /* ============================================================
                                 Filter
     ============================================================ */
-    /**
-     * Filter data based on configured fields
-     * Supported:
-     *
-     * - Boolean
-     * - Array
-     * - ObjectId
-     * - Enum
-     * - String
-     */
-    filter() {
+  /**
+   * Filter data based on configured fields
+   * Supported:
+   *
+   * - Boolean
+   * - Array
+   * - ObjectId
+   * - Enum
+   * - String
+   */
+  filter() {
+    const filterableFields = this.config.filterableFields ?? [];
 
-        const filterableFields =
-            this.config.filterableFields ?? [];
+    const booleanFields = new Set(this.config.booleanFields ?? []);
+    const objectIdFields = new Set(this.config.objectIdFields ?? []);
+    const arrayFields = new Set(this.config.arrayFields ?? []);
+    const numberFields = new Set(this.config.numberFields ?? []);
 
-        const booleanFields =
-            new Set(
-                this.config.booleanFields ?? []
-            );
-        const objectIdFields =
-            new Set(
-                this.config.objectIdFields ?? []
-            );
-        const arrayFields =
-            new Set(
-                this.config.arrayFields ?? []
-            );
-        const enumFields =
-            new Set(
-                this.config.enumFields ?? []
-            );
-        const numberFields =
-            new Set(
-                this.config.numberFields ?? []
-            );
+    const filters: Record<string, unknown> = {};
 
-        const filters:
-            Record<string, unknown> = {};
+    for (const field of filterableFields) {
+      if (numberFields.has(field)) {
+        const value = this.getNumber(field);
 
-        for (const field of filterableFields) {
-
-            if (numberFields.has(field)) {
-                const value = this.getNumber(field);
-
-                if (value !== undefined) {
-                    filters[field] = value;
-                }
-
-                continue;
-            }
-            /**
-             * Example:
-             * isActive=true
-             * =>
-             *
-             * { isActive:true }
-             */
-            if (booleanFields.has(field)) {
-                const boolValue =
-                    this.getBoolean(field);
-                if (boolValue !== undefined) {
-                    filters[field] =
-                        boolValue;
-                }
-                continue;
-            }
-            /**
-             * Example:
-             * role=ADMIN,HR
-             * =>
-             * {
-             *   role:{
-             *      $in:["ADMIN","HR"]
-             *   }
-             * }
-             */
-            if (arrayFields.has(field)) {
-                const values =
-                    this.getArray(field);
-
-                if (values.length) {
-                    filters[field] = {
-                        $in: values,
-                    };
-                }
-                continue;
-            }
-            /**
-             * Example:
-             * userId=64abc...
-             * =>
-             * ObjectId("64abc...")
-             */
-            if (objectIdFields.has(field)) {
-                const value = this.getString(field);
-
-                if (
-                    value &&
-                    Types.ObjectId.isValid(value)
-                ) {
-                    filters[field] =
-                        new Types.ObjectId(value);
-                }
-
-                continue;
-            }
-            /**
-             * Example:
-             * status=ACTIVE
-             * =>
-             * {
-             *   status:"ACTIVE"
-             * }
-             */
-            const value = this.getString(field);
-            if (enumFields.has(field)) {
-                filters[field] =
-                    value;
-                continue;
-            }
-            // normal string or nested field
-            if (value) {
-                filters[field] = value;
-            }
+        if (value !== undefined) {
+          filters[field] = value;
         }
-        if (
-            Object.keys(filters).length
-        ) {
-            this.addFilter(filters);
+
+        continue;
+      }
+      /**
+       * Example:
+       * isActive=true
+       * =>
+       *
+       * { isActive:true }
+       */
+      if (booleanFields.has(field)) {
+        const boolValue = this.getBoolean(field);
+        if (boolValue !== undefined) {
+          filters[field] = boolValue;
         }
-        return this;
+        continue;
+      }
+      /**
+       * Example:
+       * role=ADMIN,HR
+       * =>
+       * {
+       *   role:{
+       *      $in:["ADMIN","HR"]
+       *   }
+       * }
+       */
+      if (arrayFields.has(field)) {
+        const values = this.getArray(field);
+
+        if (values.length) {
+          filters[field] = {
+            $in: values,
+          };
+        }
+        continue;
+      }
+      /**
+       * Example:
+       * userId=64abc...
+       * =>
+       * ObjectId("64abc...")
+       */
+      if (objectIdFields.has(field)) {
+        const value = this.getString(field);
+
+        if (value && Types.ObjectId.isValid(value)) {
+          filters[field] = new Types.ObjectId(value);
+        }
+
+        continue;
+      }
+      /**
+       * Example:
+       * status=ACTIVE
+       * =>
+       * {
+       *   status:"ACTIVE"
+       * }
+       */
+      const value = this.getString(field);
+      // Enum and plain string fields: exact match, only when provided
+      // (an absent param must not become a filter on the empty string).
+      if (value) {
+        filters[field] = value;
+      }
     }
-    /* ============================================================
+    if (Object.keys(filters).length) {
+      this.addFilter(filters);
+    }
+    return this;
+  }
+  /* ============================================================
                                 Range
     ============================================================ */
-    /**
-     * Filter data within numeric range
-     * Example:
-     * minSalary=5000
-     * maxSalary=10000
-     * =>
-     * {
-     *   salary:{
-     *      $gte:5000,
-     *      $lte:10000
-     *   }
-     * }
-     */
-    range() {
-        const ranges =
-            this.config.rangeFields ?? [];
+  /**
+   * Filter data within numeric range
+   * Example:
+   * minSalary=5000
+   * maxSalary=10000
+   * =>
+   * {
+   *   salary:{
+   *      $gte:5000,
+   *      $lte:10000
+   *   }
+   * }
+   */
+  range() {
+    const ranges = this.config.rangeFields ?? [];
 
-        const filters:
-            Record<string, unknown> = {};
+    const filters: Record<string, unknown> = {};
 
-        for (const range of ranges) {
+    for (const range of ranges) {
+      const fieldName =
+        range.field.charAt(0).toUpperCase() + range.field.slice(1);
 
-            const fieldName =
-                range.field.charAt(0).toUpperCase() +
-                range.field.slice(1);
+      const isDate = range.type === 'date';
 
-            const isDate =
-                range.type === "date";
+      const defaultMinKey = isDate ? `start${fieldName}` : `min${fieldName}`;
 
-            const defaultMinKey =
-                isDate
-                    ? `start${fieldName}`
-                    : `min${fieldName}`;
+      const defaultMaxKey = isDate ? `end${fieldName}` : `max${fieldName}`;
 
-            const defaultMaxKey =
-                isDate
-                    ? `end${fieldName}`
-                    : `max${fieldName}`;
+      const min = isDate
+        ? this.getDate(range.minKey ?? defaultMinKey)
+        : this.getNumber(range.minKey ?? defaultMinKey);
 
-            const min =
-                isDate
-                    ? this.getDate(
-                        range.minKey ?? defaultMinKey
-                    )
-                    : this.getNumber(
-                        range.minKey ?? defaultMinKey
-                    );
+      const max = isDate
+        ? this.getDate(range.maxKey ?? defaultMaxKey)
+        : this.getNumber(range.maxKey ?? defaultMaxKey);
 
-            const max =
-                isDate
-                    ? this.getDate(
-                        range.maxKey ?? defaultMaxKey
-                    )
-                    : this.getNumber(
-                        range.maxKey ?? defaultMaxKey
-                    );
+      if (min === undefined && max === undefined) {
+        continue;
+      }
 
-            if (
-                min === undefined &&
-                max === undefined
-            ) {
-                continue;
-            }
+      const condition: Record<string, number | Date> = {};
 
-            const condition:
-                Record<string, number | Date> = {};
+      if (min !== undefined) {
+        condition.$gte = min;
+      }
+      if (max !== undefined) {
+        condition.$lte = max;
+      }
 
-            if (min !== undefined) {
-                condition.$gte = min;
-            }
-            if (max !== undefined) {
-                condition.$lte = max;
-            }
-
-            filters[range.field] =
-                condition;
-        }
-
-        if (Object.keys(filters).length) {
-            this.addFilter(filters);
-        }
-
-        return this;
+      filters[range.field] = condition;
     }
-    /* ============================================================
+
+    if (Object.keys(filters).length) {
+      this.addFilter(filters);
+    }
+
+    return this;
+  }
+  /* ============================================================
                                 Sort
     ============================================================ */
-    /**
-     * Sort data by allowed fields
-     * Example:
-     * sort=-createdAt,name
-     * =>
-     * {
-     *   createdAt:-1,
-     *   name:1
-     * }
-     */
-    sort() {
+  /**
+   * Sort data by allowed fields
+   * Example:
+   * sort=-createdAt,name
+   * =>
+   * {
+   *   createdAt:-1,
+   *   name:1
+   * }
+   */
+  sort() {
+    const sortableFields = this.config.sortableFields ?? [];
 
-        const sortableFields =
-            this.config.sortableFields ?? [];
+    const sort = this.getString(SORT_QUERY_KEY);
 
-        const sort =
-            this.getString(SORT_QUERY_KEY);
-
-        if (!sort) {
-            if (this.config.defaultSort) {
-                this.modelQuery =
-                    this.modelQuery.sort(
-                        this.config.defaultSort
-                    );
-            }
-            return this;
-        }
-
-        const sorts =
-            sort
-                .split(",")
-                .map(item => item.trim())
-                .filter(Boolean);
-
-        const validSorts =
-            sorts.filter(item => {
-                const field =
-                    item.startsWith("-")
-                        ? item.slice(1)
-                        : item;
-                return sortableFields.includes(field);
-            });
-
-        if (validSorts.length) {
-            this.modelQuery =
-                this.modelQuery.sort(
-                    validSorts.join(" ")
-                );
-        }
-        return this;
+    if (!sort) {
+      if (this.config.defaultSort) {
+        this.modelQuery = this.modelQuery.sort(this.config.defaultSort);
+      }
+      return this;
     }
-    /* ============================================================
+
+    const sorts = sort
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const validSorts = sorts.filter((item) => {
+      const field = item.startsWith('-') ? item.slice(1) : item;
+      return sortableFields.includes(field);
+    });
+
+    if (validSorts.length) {
+      this.modelQuery = this.modelQuery.sort(validSorts.join(' '));
+    }
+    return this;
+  }
+  /* ============================================================
                                 Pagination
     ============================================================ */
-    /**
-     * Apply pagination
-     * Example:
-     * page=2&limit=10
-     *
-     * =>
-     *
-     * skip=10
-     * limit=10
-     */
-    paginate() {
-        const page =
-            this.getNumber(PAGE_QUERY_KEY);
-        const limit =
-            this.getNumber(LIMIT_QUERY_KEY);
-        this.page =
-            page && page > 0
-                ? page
-                : DEFAULT_PAGE;
+  /**
+   * Apply pagination
+   * Example:
+   * page=2&limit=10
+   *
+   * =>
+   *
+   * skip=10
+   * limit=10
+   */
+  paginate() {
+    const page = this.getNumber(PAGE_QUERY_KEY);
+    const limit = this.getNumber(LIMIT_QUERY_KEY);
+    this.page = page && page > 0 ? page : DEFAULT_PAGE;
 
-        this.limit =
-            limit && limit > 0
-                ? Math.min(
-                    limit,
-                    this.config.maxLimit ?? MAX_LIMIT
-                )
-                : this.config.defaultLimit ??
-                DEFAULT_LIMIT;
+    this.limit =
+      limit && limit > 0
+        ? Math.min(limit, this.config.maxLimit ?? MAX_LIMIT)
+        : (this.config.defaultLimit ?? DEFAULT_LIMIT);
 
-        this.skip =
-            (this.page - 1) *
-            this.limit;
+    this.skip = (this.page - 1) * this.limit;
 
-        this.modelQuery =
-            this.modelQuery
-                .skip(this.skip)
-                .limit(this.limit);
+    this.modelQuery = this.modelQuery.skip(this.skip).limit(this.limit);
 
-        return this;
-    }
-    /* ============================================================
+    return this;
+  }
+  /* ============================================================
                                 Select Fields
     ============================================================ */
-    /**
-     * Select allowed fields
-     * Example:
-     * fields=name,email
-     * =>
-     * {
-     *   name:1,
-     *   email:1
-     * }
-     */
-    fields() {
-        const selectableFields =
-            this.config.selectableFields ?? [];
+  /**
+   * Select allowed fields
+   * Example:
+   * fields=name,email
+   * =>
+   * {
+   *   name:1,
+   *   email:1
+   * }
+   */
+  fields() {
+    const selectableFields = this.config.selectableFields ?? [];
 
-        const fields =
-            this.getString(FIELDS_QUERY_KEY);
+    const fields = this.getString(FIELDS_QUERY_KEY);
 
-        if (!fields) {
-            return this;
-        }
-        const selected =
-            fields
-                .split(",")
-                .map(item => item.trim())
-                .filter(Boolean);
-        const validFields =
-            selected.filter(field =>
-                selectableFields.includes(field)
-            );
-
-        if (validFields.length) {
-            this.modelQuery =
-                this.modelQuery.select(
-                    validFields.join(" ")
-                );
-        }
-        return this;
+    if (!fields) {
+      return this;
     }
-    /* ============================================================
+    const selected = fields
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const validFields = selected.filter((field) =>
+      selectableFields.includes(field),
+    );
+
+    if (validFields.length) {
+      this.modelQuery = this.modelQuery.select(validFields.join(' '));
+    }
+    return this;
+  }
+  /* ============================================================
                                 Populate
     ============================================================ */
-    /**
-     * Populate mongoose references
-     * Example:
-     * populate:user
-     * =>
-     * User document attached
-     */
-    populate() {
-        const populates =
-            this.config.populate ?? [];
-        if (!populates.length) {
-            return this;
-        }
-
-        for (const populate of populates) {
-            this.modelQuery =
-                this.modelQuery.populate(populate);
-        }
-        return this;
+  /**
+   * Populate mongoose references
+   * Example:
+   * populate:user
+   * =>
+   * User document attached
+   */
+  populate() {
+    const populates = this.config.populate ?? [];
+    if (!populates.length) {
+      return this;
     }
-    /* ============================================================
+
+    for (const populate of populates) {
+      this.modelQuery = this.modelQuery.populate(populate);
+    }
+    return this;
+  }
+  /* ============================================================
                                 Lean
     ============================================================ */
-    /**
-     * Convert mongoose document into plain object
-     * Example:
-     * Document
-     * =>
-     * Plain Object
-     */
-    lean(
-        enable = true
-    ) {
-        if (enable) {
-            this.modelQuery =
-                this.modelQuery.lean();
-        }
-        return this;
+  /**
+   * Convert mongoose document into plain object
+   * Example:
+   * Document
+   * =>
+   * Plain Object
+   */
+  lean(enable = true) {
+    if (enable) {
+      this.modelQuery = this.modelQuery.lean();
     }
-    /* ============================================================
+    return this;
+  }
+  /* ============================================================
                                 Meta
     ============================================================ */
-    /**
-     * Generate pagination metadata
-     * Example:
-     * total=100
-     * limit=10
-     * =>
-     * totalPages=10
-     */
-    async getMeta(): Promise<PaginationMeta> {
-        const total =
-            await this.model.countDocuments(
-                this.internalFilter
-            );
+  /**
+   * Generate pagination metadata
+   * Example:
+   * total=100
+   * limit=10
+   * =>
+   * totalPages=10
+   */
+  async getMeta(): Promise<PaginationMeta> {
+    const total = await this.model.countDocuments(this.internalFilter);
 
-        const totalPages =
-            Math.ceil(
-                total / this.limit
-            );
+    const totalPages = Math.ceil(total / this.limit);
 
-        return {
-            page: this.page,
-            limit: this.limit,
-            skip: this.skip,
-            total,
-            totalPages,
-            hasNextPage:
-                this.page < totalPages,
-            hasPreviousPage:
-                this.page > 1,
-            nextPage:
-                this.page < totalPages
-                    ? this.page + 1
-                    : null,
-            previousPage:
-                this.page > 1
-                    ? this.page - 1
-                    : null,
-        };
-    }
-    /* ============================================================
+    return {
+      page: this.page,
+      limit: this.limit,
+      skip: this.skip,
+      total,
+      totalPages,
+      hasNextPage: this.page < totalPages,
+      hasPreviousPage: this.page > 1,
+      nextPage: this.page < totalPages ? this.page + 1 : null,
+      previousPage: this.page > 1 ? this.page - 1 : null,
+    };
+  }
+  /* ============================================================
                                 Execute
     ============================================================ */
-    /**
-     * Execute query and return data with meta
-     * Example:
-     * {
-     *   meta:{},
-     *   data:[]
-     * }
-     */
-    async execute() {
-        const [data, meta] =
-            await Promise.all([
-                this.modelQuery,
-                this.getMeta(),
-            ]);
-        return {
-            meta,
-            data,
-        };
-    }
+  /**
+   * Execute query and return data with meta
+   * Example:
+   * {
+   *   meta:{},
+   *   data:[]
+   * }
+   */
+  async execute() {
+    const [data, meta] = await Promise.all([this.modelQuery, this.getMeta()]);
+    return {
+      meta,
+      data,
+    };
+  }
 }

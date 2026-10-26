@@ -1,30 +1,34 @@
 import express from 'express';
 import { checkAuth } from '../../middlewares/checkAuth';
-import { validateRequestBody } from '../../middlewares/validateRequest';
+import {
+  validateRequestBody,
+  validateRequestQuery,
+} from '../../middlewares/validateRequest';
 import { jobListingController } from './jobListing.controller';
 import { jobListingValidation } from './jobListing.validation';
 import { UserRole } from '../user/user.interface';
 
 const router = express.Router();
 
-// ── Public routes ────────────────────────────────────────────
-
-// Search and filter — main job board
+// ── Public ───────────────────────────────────────────────────
 router.get(
   '/',
-  validateRequestBody(jobListingValidation.jobSearchQuerySchema),
+  validateRequestQuery(jobListingValidation.jobSearchQuerySchema),
   jobListingController.searchJobs,
 );
-
-// Job detail by slug — SEO-friendly URL
 router.get('/slug/:slug', jobListingController.getJobBySlug);
 
-// Job detail by ID
+// ── Company dashboard (members see drafts / closed jobs) ────
+router.get(
+  '/company/:companyId',
+  checkAuth(UserRole.EMPLOYER, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestQuery(jobListingValidation.companyJobsQuerySchema),
+  jobListingController.getCompanyJobs,
+);
+
 router.get('/:jobId', jobListingController.getJobById);
 
-// ── Employer routes ──────────────────────────────────────────
-
-// Create job posting
+// ── Employer (company OWNER / ADMIN / HR / RECRUITER) ────────
 router.post(
   '/',
   checkAuth(UserRole.EMPLOYER),
@@ -32,7 +36,6 @@ router.post(
   jobListingController.createJob,
 );
 
-// Update job content
 router.patch(
   '/:jobId',
   checkAuth(UserRole.EMPLOYER),
@@ -40,7 +43,6 @@ router.patch(
   jobListingController.updateJob,
 );
 
-// Update job status (draft/published/closed)
 router.patch(
   '/:jobId/status',
   checkAuth(UserRole.EMPLOYER),
@@ -48,19 +50,17 @@ router.patch(
   jobListingController.updateJobStatus,
 );
 
-// Soft delete
 router.delete(
   '/:jobId',
   checkAuth(UserRole.EMPLOYER),
   jobListingController.deleteJob,
 );
 
-// ── Admin routes ─────────────────────────────────────────────
-
-// Toggle featured status
+// ── Platform admin ───────────────────────────────────────────
 router.patch(
   '/:jobId/featured',
-  checkAuth(UserRole.ADMIN),
+  checkAuth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+  validateRequestBody(jobListingValidation.toggleFeaturedSchema),
   jobListingController.toggleFeatured,
 );
 

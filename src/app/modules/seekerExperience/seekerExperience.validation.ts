@@ -3,16 +3,22 @@ import { EmploymentType, WorkMode } from './seekerExperience.constants';
 
 const createExperienceSchema = z
   .object({
-    jobTitle: z.string().trim().min(1, 'Job title is required'),
-    company: z.string().trim().min(1, 'Company is required'),
+    jobTitle: z.string().trim().min(1, 'Job title is required').max(200),
+    company: z.string().trim().min(1, 'Company is required').max(200),
     employmentType: z.enum(EmploymentType),
     workMode: z.enum(WorkMode).optional(),
-    location: z.string().trim().optional(),
+    location: z.string().trim().max(200).optional(),
     startDate: z.iso.datetime({ message: 'Invalid start date' }),
     endDate: z.iso.datetime({ message: 'Invalid end date' }).optional(),
     isCurrentJob: z.boolean().default(false),
-    responsibilities: z.array(z.string().trim()).default([]),
-    technologiesUsed: z.array(z.string().trim()).default([]),
+    responsibilities: z
+      .array(z.string().trim().min(1).max(200))
+      .max(50)
+      .default([]),
+    technologiesUsed: z
+      .array(z.string().trim().min(1).max(200))
+      .max(50)
+      .default([]),
   })
   .refine(
     (data) => {
@@ -39,16 +45,22 @@ const createExperienceSchema = z
 
 const updateExperienceSchema = z
   .object({
-    jobTitle: z.string().trim().optional(),
-    company: z.string().trim().optional(),
+    jobTitle: z.string().trim().max(200).optional(),
+    company: z.string().trim().max(200).optional(),
     employmentType: z.enum(EmploymentType).optional(),
     workMode: z.enum(WorkMode).optional(),
-    location: z.string().trim().optional(),
+    location: z.string().trim().max(200).optional(),
     startDate: z.iso.datetime().optional(),
     endDate: z.iso.datetime().optional().nullable(),
     isCurrentJob: z.boolean().optional(),
-    responsibilities: z.array(z.string().trim()).optional(),
-    technologiesUsed: z.array(z.string().trim()).optional(),
+    responsibilities: z
+      .array(z.string().trim().min(1).max(200))
+      .max(50)
+      .optional(),
+    technologiesUsed: z
+      .array(z.string().trim().min(1).max(200))
+      .max(50)
+      .optional(),
   })
   .superRefine((data, ctx) => {
     const start = data.startDate ? new Date(data.startDate) : null;

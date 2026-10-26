@@ -5,32 +5,74 @@ import {
   JOB_MANAGER_ROLES,
   JobStatus,
 } from './jobListing.constants';
-import { IJobListing, IJobListingQuery } from './jobListing.interface';
-import { JobListing }       from './jobListing.models';
-import { buildJobQuery }    from './jobListing.utils';
-import { Company }          from '../company/company.models';
-import { CompanyMember }    from '../companyMember/companyMember.models';
-import { JobCategory }      from '../jobCategory/jobCategory.models';
+import {
+  ICompanyJobsQuery,
+  IJobListing,
+  IJobListingDocument,
+  IJobListingQuery,
+} from './jobListing.interface';
+import { JobListing } from './jobListing.models';
+import { buildJobQuery, buildPagination } from './jobListing.utils';
+import { Company } from '../company/company.models';
+import { CompanyMember } from '../companyMember/companyMember.models';
+import { JobCategory } from '../jobCategory/jobCategory.models';
 import { jobCategoryService } from '../jobCategory/jobCategory.service';
-import { COMPANY_NOT_FOUND }  from '../company/company.constants';
+import { COMPANY_NOT_FOUND } from '../company/company.constants';
 import AppError from '../../errorHelpers/AppError';
+import { UserRole } from '../user/user.interface';
+
+// Public company fields shown alongside a job listing.
+const PUBLIC_COMPANY_FIELDS = 'name slug logo verificationStatus';
+
+/**
+ * Throws 403 unless the user is an active OWNER/ADMIN/HR/RECRUITER of the
+ * company.
+ */
+const assertJobManager = async (companyId: string, userId: string) => {
+  const member = await CompanyMember.getMemberWithRole(companyId, userId);
+  if (!member || !JOB_MANAGER_ROLES.includes(member.role)) {
+    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
+  }
+};
+
+/**
+ * Loads an active job and verifies the requester may manage it. The company
+ * is taken from the job document itself — never from the request body — so
+ * a member of company A cannot modify company B's jobs by sending A's id.
+ */
+const loadManagedJob = async (
+  jobId: string,
+  userId: string,
+): Promise<IJobListingDocument> => {
+  const job = await JobListing.isJobExists(jobId);
+  if (!job) {
+    throw new AppError(httpStatus.NOT_FOUND, JOB_NOT_FOUND);
+  }
+
+  await assertJobManager(job.companyId.toString(), userId);
+  return job;
+};
+
+const assertCategoryExists = async (categoryId: string) => {
+  const category = await JobCategory.isCategoryExists(categoryId);
+  if (!category) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Job category not found');
+  }
+};
 
 // ─────────────────────────────────────────────────────────────
-// Create — employer member with sufficient role
+// Create — company OWNER / ADMIN / HR / RECRUITER
 // ─────────────────────────────────────────────────────────────
-
 const createJob = async (
-  userId:    string,
+  userId: string,
   companyId: string,
-  payload:   Partial<IJobListing>,
+  payload: Partial<IJobListing>,
 ) => {
-  // Verify company exists and is active
   const company = await Company.isCompanyExists(companyId);
   if (!company) {
     throw new AppError(httpStatus.NOT_FOUND, COMPANY_NOT_FOUND);
   }
 
-  // Verify the posting user is a member with a role that can post jobs
   const member = await CompanyMember.getMemberWithRole(companyId, userId);
   if (!member || !JOB_MANAGER_ROLES.includes(member.role)) {
     throw new AppError(
@@ -39,14 +81,8 @@ const createJob = async (
     );
   }
 
-  // If categoryId provided, verify it exists
   if (payload.categoryId) {
-    const category = await JobCategory.isCategoryExists(
-      payload.categoryId.toString(),
-    );
-    if (!category) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Job category not found');
-    }
+    await assertCategoryExists(payload.categoryId.toString());
   }
 
   const job = await JobListing.create({
@@ -55,7 +91,6 @@ const createJob = async (
     postedBy: userId,
   });
 
-  // If posting directly as published, increment category job count
   if (job.status === JobStatus.PUBLISHED && job.categoryId) {
     await jobCategoryService.incrementJobCount(job.categoryId.toString());
   }
@@ -64,22 +99,21 @@ const createJob = async (
 };
 
 // ─────────────────────────────────────────────────────────────
-// Public search — paginated, filtered, sorted
+// Public search — published, non-expired jobs only
 // ─────────────────────────────────────────────────────────────
-
 const searchJobs = async (queryParams: IJobListingQuery) => {
-  const { filter, sort, skip, limit } = buildJobQuery(queryParams);
+  const { filter, sort, skip, limit, page } = buildJobQuery(queryParams);
 
-  // Projection: if text search, include relevance score
   const projection = queryParams.searchTerm
     ? { score: { $meta: 'textScore' } }
     : {};
 
   const [jobs, total] = await Promise.all([
     JobListing.find(filter, projection)
+      .sort(sort)
       .skip(skip)
       .limit(limit)
-      .populate('companyId',  'name slug logo isVerified')
+      .populate('companyId', PUBLIC_COMPANY_FIELDS)
       .populate('categoryId', 'name slug')
       .lean(),
     JobListing.countDocuments(filter),
@@ -89,7 +123,7 @@ const searchJobs = async (queryParams: IJobListingQuery) => {
     jobs,
     meta: {
       total,
-      page:       Math.floor(skip / limit) + 1,
+      page,
       limit,
       totalPages: Math.ceil(total / limit),
     },
@@ -97,19 +131,18 @@ const searchJobs = async (queryParams: IJobListingQuery) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Get single job by ID — increment view count
+// Public detail — published jobs only (drafts/closed are visible to company
+// members via GET /jobs/company/:companyId). Each view increments viewCount.
 // ─────────────────────────────────────────────────────────────
-
-const getJobById = async (jobId: string) => {
-  // $inc viewCount atomically — no separate update query needed
+const getPublishedJob = async (filter: Record<string, unknown>) => {
   const job = await JobListing.findOneAndUpdate(
-    { _id: jobId, isActive: true },
+    { ...filter, isActive: true, status: JobStatus.PUBLISHED },
     { $inc: { viewCount: 1 } },
     { new: true },
   )
-    .populate('companyId',  'name slug logo description address isVerified')
+    .populate('companyId', `${PUBLIC_COMPANY_FIELDS} description address`)
     .populate('categoryId', 'name slug')
-    .populate('postedBy',   'name avatar');
+    .populate('postedBy', 'name avatar');
 
   if (!job) {
     throw new AppError(httpStatus.NOT_FOUND, JOB_NOT_FOUND);
@@ -118,46 +151,49 @@ const getJobById = async (jobId: string) => {
   return job;
 };
 
-// Get by slug — used for SEO-friendly job detail pages
-const getJobBySlug = async (slug: string) => {
-  const job = await JobListing.findOneAndUpdate(
-    { slug, isActive: true, status: JobStatus.PUBLISHED },
-    { $inc: { viewCount: 1 } },
-    { new: true },
-  )
-    .populate('companyId',  'name slug logo description isVerified')
-    .populate('categoryId', 'name slug');
+const getJobById = (jobId: string) => getPublishedJob({ _id: jobId });
 
-  if (!job) {
-    throw new AppError(httpStatus.NOT_FOUND, JOB_NOT_FOUND);
-  }
-
-  return job;
-};
+const getJobBySlug = (slug: string) => getPublishedJob({ slug });
 
 // ─────────────────────────────────────────────────────────────
-// Company's own job listings — employer dashboard
+// Company dashboard — all of a company's jobs, any status.
+// Requires active membership (any role) or a platform admin.
 // ─────────────────────────────────────────────────────────────
-
 const getCompanyJobs = async (
   companyId: string,
-  queryParams: IJobListingQuery,
+  requester: { userId: string; role: string },
+  queryParams: ICompanyJobsQuery,
 ) => {
-  // Override filter to show company's own jobs (all statuses, not just published)
-  const { sort, skip, limit } = buildJobQuery(queryParams);
+  const isPlatformAdmin = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(
+    requester.role as UserRole,
+  );
+
+  if (!isPlatformAdmin) {
+    const member = await CompanyMember.getMemberWithRole(
+      companyId,
+      requester.userId,
+    );
+    if (!member) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        'You are not a member of this company',
+      );
+    }
+  }
+
+  const { page, limit, skip } = buildPagination(queryParams);
 
   const filter: Record<string, unknown> = {
     companyId,
     isActive: true,
   };
-
-  // Allow filtering by status from employer dashboard
   if (queryParams.status) {
     filter.status = queryParams.status;
   }
 
   const [jobs, total] = await Promise.all([
     JobListing.find(filter)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate('categoryId', 'name slug')
@@ -169,7 +205,7 @@ const getCompanyJobs = async (
     jobs,
     meta: {
       total,
-      page:       Math.floor(skip / limit) + 1,
+      page,
       limit,
       totalPages: Math.ceil(total / limit),
     },
@@ -177,25 +213,22 @@ const getCompanyJobs = async (
 };
 
 // ─────────────────────────────────────────────────────────────
-// Update job content
+// Update content fields
 // ─────────────────────────────────────────────────────────────
-
 const updateJob = async (
-  jobId:     string,
-  userId:    string,
-  companyId: string,
-  payload:   Partial<IJobListing>,
+  jobId: string,
+  userId: string,
+  payload: Partial<IJobListing>,
 ) => {
-  // Verify ownership at company level
-  const job = await JobListing.isOwnedByCompany(jobId, companyId);
-  if (!job) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
-  }
+  const job = await loadManagedJob(jobId, userId);
 
-  // Verify member has role to manage jobs
-  const member = await CompanyMember.getMemberWithRole(companyId, userId);
-  if (!member || !JOB_MANAGER_ROLES.includes(member.role)) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
+  const newCategoryId = payload.categoryId?.toString();
+  const oldCategoryId = job.categoryId?.toString();
+  const categoryChanged =
+    newCategoryId !== undefined && newCategoryId !== oldCategoryId;
+
+  if (categoryChanged) {
+    await assertCategoryExists(newCategoryId);
   }
 
   const updated = await JobListing.findByIdAndUpdate(
@@ -204,32 +237,38 @@ const updateJob = async (
     { new: true, runValidators: true },
   );
 
+  // Keep cached category job counts in sync for published jobs.
+  if (categoryChanged && job.status === JobStatus.PUBLISHED) {
+    if (oldCategoryId) {
+      await jobCategoryService.decrementJobCount(oldCategoryId);
+    }
+    await jobCategoryService.incrementJobCount(newCategoryId);
+  }
+
   return updated;
 };
 
 // ─────────────────────────────────────────────────────────────
-// Update status — handles category jobCount side effects
-// draft → published: increment jobCount
-// published → closed/expired: decrement jobCount
+// Status transitions (draft / published / closed / expired)
 // ─────────────────────────────────────────────────────────────
-
 const updateJobStatus = async (
-  jobId:     string,
-  userId:    string,
-  companyId: string,
+  jobId: string,
+  userId: string,
   newStatus: JobStatus,
 ) => {
-  const job = await JobListing.isOwnedByCompany(jobId, companyId);
-  if (!job) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
-  }
-
-  const member = await CompanyMember.getMemberWithRole(companyId, userId);
-  if (!member || !JOB_MANAGER_ROLES.includes(member.role)) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
-  }
-
+  const job = await loadManagedJob(jobId, userId);
   const previousStatus = job.status;
+
+  if (previousStatus === newStatus) {
+    throw new AppError(httpStatus.BAD_REQUEST, `Job is already ${newStatus}`);
+  }
+
+  if (newStatus === JobStatus.PUBLISHED && job.expiresAt <= new Date()) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This job has passed its expiry date. Update expiresAt before publishing.',
+    );
+  }
 
   const updated = await JobListing.findByIdAndUpdate(
     jobId,
@@ -237,23 +276,13 @@ const updateJobStatus = async (
     { new: true },
   );
 
-  // Side effect: maintain category jobCount cache
+  // Category counts track PUBLISHED jobs only: adjust whenever a job enters
+  // or leaves the published state (including published -> draft).
   if (job.categoryId) {
     const catId = job.categoryId.toString();
-
-    // Going live → increment
-    if (
-      previousStatus !== JobStatus.PUBLISHED &&
-      newStatus === JobStatus.PUBLISHED
-    ) {
+    if (newStatus === JobStatus.PUBLISHED) {
       await jobCategoryService.incrementJobCount(catId);
-    }
-
-    // Going offline → decrement
-    if (
-      previousStatus === JobStatus.PUBLISHED &&
-      (newStatus === JobStatus.CLOSED || newStatus === JobStatus.EXPIRED)
-    ) {
+    } else if (previousStatus === JobStatus.PUBLISHED) {
       await jobCategoryService.decrementJobCount(catId);
     }
   }
@@ -264,25 +293,11 @@ const updateJobStatus = async (
 // ─────────────────────────────────────────────────────────────
 // Soft delete
 // ─────────────────────────────────────────────────────────────
-
-const deleteJob = async (
-  jobId:     string,
-  userId:    string,
-  companyId: string,
-) => {
-  const job = await JobListing.isOwnedByCompany(jobId, companyId);
-  if (!job) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
-  }
-
-  const member = await CompanyMember.getMemberWithRole(companyId, userId);
-  if (!member || !JOB_MANAGER_ROLES.includes(member.role)) {
-    throw new AppError(httpStatus.FORBIDDEN, JOB_NOT_OWNED);
-  }
+const deleteJob = async (jobId: string, userId: string) => {
+  const job = await loadManagedJob(jobId, userId);
 
   await JobListing.findByIdAndUpdate(jobId, { $set: { isActive: false } });
 
-  // If job was published, decrement category count on delete
   if (job.status === JobStatus.PUBLISHED && job.categoryId) {
     await jobCategoryService.decrementJobCount(job.categoryId.toString());
   }
@@ -291,12 +306,11 @@ const deleteJob = async (
 };
 
 // ─────────────────────────────────────────────────────────────
-// Admin — toggle featured status
+// Admin: feature / unfeature a job
 // ─────────────────────────────────────────────────────────────
-
 const toggleFeatured = async (jobId: string, isFeatured: boolean) => {
-  const job = await JobListing.findByIdAndUpdate(
-    jobId,
+  const job = await JobListing.findOneAndUpdate(
+    { _id: jobId, isActive: true },
     { $set: { isFeatured } },
     { new: true },
   );
@@ -309,8 +323,32 @@ const toggleFeatured = async (jobId: string, isFeatured: boolean) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Internal — called by application service on apply/withdraw
+// Internal helpers used by other modules
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * Soft-deletes every active job of a company (used when the company itself is
+ * deleted) and releases their category counts.
+ */
+const deactivateCompanyJobs = async (companyId: string) => {
+  const publishedJobs = await JobListing.find({
+    companyId,
+    isActive: true,
+    status: JobStatus.PUBLISHED,
+    categoryId: { $ne: null },
+  })
+    .select('categoryId')
+    .lean();
+
+  await JobListing.updateMany(
+    { companyId, isActive: true },
+    { $set: { isActive: false } },
+  );
+
+  for (const job of publishedJobs) {
+    await jobCategoryService.decrementJobCount(String(job.categoryId));
+  }
+};
 
 const incrementApplicationCount = async (jobId: string) => {
   await JobListing.findByIdAndUpdate(jobId, {
@@ -335,6 +373,7 @@ export const jobListingService = {
   updateJobStatus,
   deleteJob,
   toggleFeatured,
+  deactivateCompanyJobs,
   incrementApplicationCount,
   decrementApplicationCount,
 };

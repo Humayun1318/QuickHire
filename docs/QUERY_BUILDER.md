@@ -50,7 +50,7 @@ shared/validation/
 
 **Why split the engine from per-module config?**
 
-`QueryBuilder` has no idea what a "user" or a "job category" is. It only knows the *shapes* of query
+`QueryBuilder` has no idea what a "user" or a "job category" is. It only knows the _shapes_ of query
 operations: search a set of fields, filter a set of fields, range-filter a set of fields, sort by a
 set of fields, select a set of fields, populate a set of paths. Every one of those "sets" is
 supplied from the outside, per call site, via a `config: FilterConfig` object (`*.builder.config.ts`,
@@ -61,20 +61,20 @@ one per module).
 special case or risk silently triggering it. Keeping the builder 100% generic is what makes it safe
 to reuse across `user`, `company`, `jobListing`, `jobCategory`, and any future module without
 regression risk to the others. A bug fix or feature added to `QueryBuilder.ts` benefits every module
-simultaneously; a bug introduced there also *breaks* every module simultaneously — which is exactly
+simultaneously; a bug introduced there also _breaks_ every module simultaneously — which is exactly
 why the class has to stay small, generic, and free of business rules.
 
 ---
 
 ## 2. Source Map
 
-| File | Responsibility |
-|---|---|
-| `builder/QueryBuilder.ts` | The generic engine class (~710 lines). All chainable methods, helpers, and execution logic |
-| `shared/queryBuilder/queryBuilder.types.ts` | `FilterConfig`, `RangeFilterConfig`, `ModelQuery`, `QueryParams`, `PaginationMeta`, `QueryField` types |
+| File                                            | Responsibility                                                                                                             |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `builder/QueryBuilder.ts`                       | The generic engine class (~710 lines). All chainable methods, helpers, and execution logic                                 |
+| `shared/queryBuilder/queryBuilder.types.ts`     | `FilterConfig`, `RangeFilterConfig`, `ModelQuery`, `QueryParams`, `PaginationMeta`, `QueryField` types                     |
 | `shared/queryBuilder/queryBuilder.constants.ts` | `DEFAULT_PAGE = 1`, `DEFAULT_LIMIT = 20`, `MAX_LIMIT = 100`, query key names (`search`, `sort`, `page`, `limit`, `fields`) |
-| `shared/queryBuilder/index.ts` | Barrel re-exports |
-| `shared/validation/queryBuilderSchema.ts` | Zod validation of the shared query-level params (`search`, `sort`, `fields`, `page`, `limit`) |
+| `shared/queryBuilder/index.ts`                  | Barrel re-exports                                                                                                          |
+| `shared/validation/queryBuilderSchema.ts`       | Zod validation of the shared query-level params (`search`, `sort`, `fields`, `page`, `limit`)                              |
 
 ---
 
@@ -98,19 +98,19 @@ constructor(
 
 > **This is a 4-argument constructor**, not 3. A common mistake is to call
 > `new QueryBuilder(SomeModel.find(), req.query, config)` — that is **not** this class's signature.
-> This implementation requires the raw Mongoose `Model` *separately* from the already-started
+> This implementation requires the raw Mongoose `Model` _separately_ from the already-started
 > `Query` (`modelQuery`), because `getMeta()` needs the model to run an independent
 > `countDocuments()` call (see §8.1).
 
-| Parameter | Type | Where it comes from | Internal use |
-|---|---|---|---|
-| `model` | `Model<T>` | The Mongoose model itself, e.g. `JobCategory` (not `JobCategory.find()`) | Used exclusively by `getMeta()` to run `model.countDocuments(this.internalFilter)` — a second, independent query used only to compute pagination totals |
-| `modelQuery` | `ModelQuery<T>` (alias for `Query<any, T>`) | The already-initiated query, e.g. `JobCategory.find()` | The query object every chainable method (`search`, `filter`, `range`, `sort`, `paginate`, `fields`, `populate`, `lean`) mutates by reassignment (`this.modelQuery = this.modelQuery.X(...)`) |
-| `queryParams` | `QueryParams` (alias for `Record<string, unknown>`) | `req.query` from Express | Read-only source for every query key (`search`, `sort`, `page`, `limit`, `fields`, plus every field named in `filterableFields`/`rangeFields`) |
-| `config` | `FilterConfig` | A per-module `*.builder.config.ts` file | Drives every decision the builder makes — which fields are searchable/filterable/range/sortable/selectable, defaults, and caps. See §9 |
+| Parameter     | Type                                                | Where it comes from                                                      | Internal use                                                                                                                                                                                 |
+| ------------- | --------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`       | `Model<T>`                                          | The Mongoose model itself, e.g. `JobCategory` (not `JobCategory.find()`) | Used exclusively by `getMeta()` to run `model.countDocuments(this.internalFilter)` — a second, independent query used only to compute pagination totals                                      |
+| `modelQuery`  | `ModelQuery<T>` (alias for `Query<unknown, T>`)     | The already-initiated query, e.g. `JobCategory.find()`                   | The query object every chainable method (`search`, `filter`, `range`, `sort`, `paginate`, `fields`, `populate`, `lean`) mutates by reassignment (`this.modelQuery = this.modelQuery.X(...)`) |
+| `queryParams` | `QueryParams` (alias for `Record<string, unknown>`) | `req.query` from Express                                                 | Read-only source for every query key (`search`, `sort`, `page`, `limit`, `fields`, plus every field named in `filterableFields`/`rangeFields`)                                               |
+| `config`      | `FilterConfig`                                      | A per-module `*.builder.config.ts` file                                  | Drives every decision the builder makes — which fields are searchable/filterable/range/sortable/selectable, defaults, and caps. See §9                                                       |
 
 **Constructor side effect worth knowing:** `this.limit` is set immediately in the constructor from
-`config.defaultLimit ?? DEFAULT_LIMIT`, *before* `paginate()` has ever run. This means:
+`config.defaultLimit ?? DEFAULT_LIMIT`, _before_ `paginate()` has ever run. This means:
 
 - `this.limit` always has a usable value even if `paginate()` is never called in the chain.
 - `this.skip` is **not** initialized here — it keeps its class-property default of `0` until
@@ -120,9 +120,9 @@ constructor(
 
 ```ts
 const builder = new QueryBuilder(
-  JobCategory,        // Model<T>        — the model itself
+  JobCategory, // Model<T>        — the model itself
   JobCategory.find(), // ModelQuery<T>  — the started query
-  queryParams,        // QueryParams
+  queryParams, // QueryParams
   jobCategoryBuilderConfig, // FilterConfig
 );
 ```
@@ -132,14 +132,14 @@ const builder = new QueryBuilder(
 - Passing `Model.find()` as the first argument instead of the bare `Model`. This compiles under a
   loose generic setup but breaks `getMeta()` at runtime, because `model.countDocuments` won't
   behave correctly on a `Query` object (and even if a similarly-named method exists, it wouldn't be
-  counting against a *fresh* base query — it would inherit whatever was already chained onto the
+  counting against a _fresh_ base query — it would inherit whatever was already chained onto the
   passed-in query object).
 - Swapping the `modelQuery` and `queryParams` argument order — both are objects, so TypeScript
   structural typing may not catch this immediately with a broad `QueryParams` type.
 
 ### Best Practices
 
-- Always construct the builder with a *fresh* `Model.find()` — don't pre-chain `.sort()`,
+- Always construct the builder with a _fresh_ `Model.find()` — don't pre-chain `.sort()`,
   `.limit()`, etc. onto `modelQuery` before handing it to the constructor. Let the builder own all
   of that via its chainable methods so `internalFilter` and `this.limit`/`this.page`/`this.skip`
   stay the single source of truth.
@@ -161,16 +161,16 @@ private limit = DEFAULT_LIMIT;
 private skip = 0;
 ```
 
-| Field | Purpose |
-|---|---|
-| `modelQuery` | The live, mutable Mongoose query. Every chainable method reassigns this by calling a Mongoose query method on it and storing the result back (`this.modelQuery = this.modelQuery.sort(...)`, etc.) |
-| `model` | Bare model reference, used only for the independent `countDocuments()` call in `getMeta()` |
-| `queryParams` | Raw `req.query`, read via the private getters (§6) — never mutated |
-| `config` | The per-module `FilterConfig` — never mutated |
-| `internalFilter` | The **cumulative** Mongo filter object built up by `search()`, `filter()`, and `range()` via `addFilter()`. This is what both the main query *and* `getMeta()`'s `countDocuments()` use, so pagination totals always match the filter actually applied |
-| `page` | Current 1-indexed page number, set by `paginate()` (defaults to `DEFAULT_PAGE` until then) |
-| `limit` | Page size. Initialized in the constructor from `config.defaultLimit ?? DEFAULT_LIMIT`, then possibly overwritten by `paginate()` |
-| `skip` | Number of documents to skip, computed only inside `paginate()` as `(page - 1) * limit`. Stays `0` if `paginate()` is never called |
+| Field            | Purpose                                                                                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `modelQuery`     | The live, mutable Mongoose query. Every chainable method reassigns this by calling a Mongoose query method on it and storing the result back (`this.modelQuery = this.modelQuery.sort(...)`, etc.)                                                     |
+| `model`          | Bare model reference, used only for the independent `countDocuments()` call in `getMeta()`                                                                                                                                                             |
+| `queryParams`    | Raw `req.query`, read via the private getters (§6) — never mutated                                                                                                                                                                                     |
+| `config`         | The per-module `FilterConfig` — never mutated                                                                                                                                                                                                          |
+| `internalFilter` | The **cumulative** Mongo filter object built up by `search()`, `filter()`, and `range()` via `addFilter()`. This is what both the main query _and_ `getMeta()`'s `countDocuments()` use, so pagination totals always match the filter actually applied |
+| `page`           | Current 1-indexed page number, set by `paginate()` (defaults to `DEFAULT_PAGE` until then)                                                                                                                                                             |
+| `limit`          | Page size. Initialized in the constructor from `config.defaultLimit ?? DEFAULT_LIMIT`, then possibly overwritten by `paginate()`                                                                                                                       |
+| `skip`           | Number of documents to skip, computed only inside `paginate()` as `(page - 1) * limit`. Stays `0` if `paginate()` is never called                                                                                                                      |
 
 ---
 
@@ -221,7 +221,7 @@ new QueryBuilder(model, modelQuery, req.query, config)
 
 **Key structural fact:** only `search()`, `filter()`, and `range()` write into `internalFilter`
 (via `addFilter()`). `sort()`, `paginate()`, `fields()`, `populate()`, and `lean()` all operate
-directly on `modelQuery` and never touch `internalFilter`. This is *why* `getMeta()`'s
+directly on `modelQuery` and never touch `internalFilter`. This is _why_ `getMeta()`'s
 `countDocuments(this.internalFilter)` gives you a correct "total matching records" number
 regardless of sorting, pagination, field selection, or population — those don't affect which
 documents match, only how they're shaped/ordered/sliced.
@@ -243,7 +243,7 @@ private getString(key: string): string {
 }
 ```
 
-- **Purpose:** the single point of truth for reading *any* raw query param safely.
+- **Purpose:** the single point of truth for reading _any_ raw query param safely.
 - **Behavior:** returns `""` (not `undefined`) for anything that isn't a string — including
   `undefined`, arrays (e.g. `?role=A&role=B` parsed by Express as `string[]`), and numbers.
 - **Edge case:** because Express's default query parser can produce arrays for repeated keys
@@ -361,7 +361,7 @@ private addFilter(filter: FilterQuery<T>) {
 - **Merge strategy is a shallow spread**, not a deep merge. Every call **replaces** any top-level
   key that already exists in `internalFilter` with the new value for that key. See §13 for the
   concrete bug this can cause if two config sections (e.g. `filterableFields` and `rangeFields`)
-  ever target the *same* field name.
+  ever target the _same_ field name.
 - After merging, it re-applies the **entire accumulated** `internalFilter` to `modelQuery` via
   `.find()` — not just the incremental piece. This is intentional/safe (each call fully re-syncs
   `modelQuery`'s conditions with `internalFilter`), but it does mean `.find()` is called once per
@@ -385,8 +385,11 @@ search() {
   const searchableFields = this.config.searchableFields ?? [];
   if (!searchableFields.length) return this;
 
+  // User input is escaped (matched literally) and capped at 100 characters
+  const escapedKeyword = escapeRegex(keyword.slice(0, 100));
+
   const conditions = searchableFields.map(field => ({
-    [field]: { $regex: keyword, $options: "i" },
+    [field]: { $regex: escapedKeyword, $options: "i" },
   } as FilterQuery<T>));
 
   this.addFilter({ $or: conditions });
@@ -455,24 +458,22 @@ Generated MongoDB query:
 - `search=` (present but empty) → trimmed to `""` → treated identically to no `search` param at all.
 - `searchableFields` configured but empty array vs. not configured at all → same behavior (both use
   `?? []`).
-- A keyword containing regex special characters (e.g. `search=a.b*`) is passed **unescaped** into
-  `$regex` — it will be interpreted as a real regex pattern, not a literal string. See mistake in
-  §13.
+- A keyword containing regex special characters (e.g. `search=a.b*`) is **escaped** with
+  `escapeRegex()` (`src/app/utils/escapeRegex.ts`) and matched as literal text. Keywords longer
+  than 100 characters are truncated.
 
 **Common Mistakes**
 
 - Forgetting to add a field to `searchableFields` and assuming `search=` will match it — it silently
   won't, no error is thrown.
-- Not sanitizing/escaping user input before it reaches `$regex` — a user typing regex metacharacters
-  can cause unexpected matches or, in pathological cases, expensive regex evaluation (see §14).
 
 **Best Practices**
 
 - Keep `searchableFields` short and string-typed. Don't include ObjectId or numeric fields — regex
   against a non-string field either won't match anything meaningful or, depending on the field type
   and Mongoose's schema-level casting, can behave unpredictably.
-- If you need literal (non-regex) search safety, escape user input for regex metacharacters before
-  it reaches this builder — this class does not do that for you.
+- Search input is always treated as literal text. If a module ever needs real regex search, add a
+  dedicated, validated option rather than removing the escaping.
 
 **Performance Notes**
 
@@ -490,7 +491,6 @@ filter() {
   const booleanFields = new Set(this.config.booleanFields ?? []);
   const objectIdFields = new Set(this.config.objectIdFields ?? []);
   const arrayFields = new Set(this.config.arrayFields ?? []);
-  const enumFields = new Set(this.config.enumFields ?? []);
   const numberFields = new Set(this.config.numberFields ?? []);
 
   const filters: Record<string, unknown> = {};
@@ -518,12 +518,9 @@ filter() {
       }
       continue;
     }
+    // Enum and plain string fields: exact match, only when provided
+    // (an absent param must not become a filter on the empty string).
     const value = this.getString(field);
-    if (enumFields.has(field)) {
-      filters[field] = value;
-      continue;
-    }
-    // normal string or nested field
     if (value) filters[field] = value;
   }
 
@@ -614,18 +611,18 @@ Generated MongoDB query:
 ```ts
 // jobCategory.builder.config.ts
 export const jobCategoryBuilderConfig: FilterConfig = {
-  searchableFields: ["name", "slug"],
-  filterableFields: ["isActive", "parentId", "depth"],
-  numberFields: ["depth", "jobCount"],
-  booleanFields: ["isActive"],
-  objectIdFields: ["parentId"],
+  searchableFields: ['name', 'slug'],
+  filterableFields: ['isActive', 'parentId', 'depth'],
+  numberFields: ['depth', 'jobCount'],
+  booleanFields: ['isActive'],
+  objectIdFields: ['parentId'],
   // ...
 };
 ```
 
 **Edge Cases**
 
-- A field in `filterableFields` but present as an *empty string* in the query (`?depth=`) is skipped
+- A field in `filterableFields` but present as an _empty string_ in the query (`?depth=`) is skipped
   entirely — you cannot use this mechanism to explicitly filter for an empty-string value.
 - An invalid ObjectId string (`?parentId=not-an-id`) is dropped silently — the filter is simply not
   applied, so the query behaves as if `parentId` was never sent, rather than returning a 400 or an
@@ -706,7 +703,7 @@ interface RangeFilterConfig {
   field: string;
   minKey?: string;
   maxKey?: string;
-  type?: "number" | "date";
+  type?: 'number' | 'date';
 }
 ```
 
@@ -715,7 +712,7 @@ interface RangeFilterConfig {
 **Internal algorithm:**
 
 1. For each configured range descriptor, capitalize the field name (`salary` → `Salary`) to build
-   the *default* key names.
+   the _default_ key names.
 2. If `range.type === "date"`, defaults are `start{Field}` / `end{Field}`; otherwise (numeric, the
    default assumption) they're `min{Field}` / `max{Field}`.
 3. An explicit `range.minKey`/`range.maxKey` always overrides the derived default (`??` short-circuits
@@ -794,7 +791,7 @@ Execution:
 - `min > max` (e.g. `minSalary=50000&maxSalary=10000`) is **not validated** — it's passed straight
   through as `{ $gte: 50000, $lte: 10000 }`, which is a logically impossible condition and will
   simply match zero documents.
-- An invalid number/date string for either bound resolves to `undefined` for *that* bound only —
+- An invalid number/date string for either bound resolves to `undefined` for _that_ bound only —
   the other bound (if valid) still applies as an open-ended range.
 
 **Common Mistakes**
@@ -804,7 +801,7 @@ Execution:
   `getNumber()` and silently fail to match any dates (a numeric parse of an ISO date string like
   `"2025-01-01"` returns `NaN` → `undefined` → field skipped).
 - Forgetting that the default key derivation capitalizes only the **first letter**: `field:
-  "monthlySalary"` → defaults `minMonthlySalary` / `maxMonthlySalary`, not `minMonthlysalary`.
+"monthlySalary"` → defaults `minMonthlySalary` / `maxMonthlySalary`, not `minMonthlysalary`.
 
 **Best Practices**
 
@@ -869,7 +866,7 @@ a denial-of-service-adjacent risk. Whitelisting via `sortableFields` closes that
 3. **Invalid tokens are silently dropped**, not rejected — a mixed request like
    `sort=name,-secretInternalField` where only `name` is whitelisted still sorts by `name`, quietly
    ignoring the disallowed field.
-4. If *no* tokens survive whitelisting, no `.sort()` call is made at all (not even the default) —
+4. If _no_ tokens survive whitelisting, no `.sort()` call is made at all (not even the default) —
    this is a subtle branch: an all-invalid `sort` param results in **no sort**, not the configured
    default. See §13.
 
@@ -935,7 +932,7 @@ Result: query runs with no explicit sort (Mongo natural order), even though a de
 **Best Practices**
 
 - Always set `defaultSort` for list endpoints so results have a stable, predictable order even when
-  no `sort` param is sent — pagination is unreliable across requests without *some* consistent sort
+  no `sort` param is sent — pagination is unreliable across requests without _some_ consistent sort
   order (`skip`/`limit` on an unsorted query can return inconsistent pages).
 - Keep `sortableFields` limited to indexed fields where possible (see §14).
 
@@ -1043,7 +1040,7 @@ Result: client asked for 500, server enforces 100.
 **Common Mistakes**
 
 - **Setting `config.defaultLimit` larger than `config.maxLimit`.** Because the "no valid limit
-  supplied" fallback branch uses `defaultLimit` *without* capping it against `maxLimit`, a
+  supplied" fallback branch uses `defaultLimit` _without_ capping it against `maxLimit`, a
   misconfigured module (`defaultLimit: 200, maxLimit: 50`) will silently serve 200 records per page
   whenever the client omits `limit`, even though an explicit `?limit=200` request would correctly be
   capped to 50. Always keep `defaultLimit <= maxLimit` by convention.
@@ -1183,7 +1180,7 @@ Generated MongoDB behavior:
 
 **Edge Cases**
 
-- No client-facing toggle to *disable* configured population — if a module always populates
+- No client-facing toggle to _disable_ configured population — if a module always populates
   `parentId`, every request through that builder will always pay that join cost, regardless of
   whether the client needs it. If conditional population is required, it needs to be handled outside
   this builder (e.g. building `config.populate` dynamically before constructing `QueryBuilder`).
@@ -1249,7 +1246,7 @@ Service call:
 
 - `.lean(false)` reads as "explicitly disable lean" but the implementation cannot disable something
   that hasn't been enabled — it's functionally identical to not calling `.lean()` at all. There is
-  no code path in this method that would ever *remove* `.lean()` from an already-lean query within
+  no code path in this method that would ever _remove_ `.lean()` from an already-lean query within
   the same chain (this only matters if some future refactor calls `.lean()` unconditionally
   elsewhere).
 
@@ -1297,7 +1294,7 @@ async getMeta(): Promise<PaginationMeta> {
 }
 ```
 
-**Purpose:** compute pagination metadata for the *current* filter state, independent of sorting,
+**Purpose:** compute pagination metadata for the _current_ filter state, independent of sorting,
 field selection, population, or lean conversion.
 
 **Why a separate `countDocuments()` call:** `internalFilter` reflects only `search()` + `filter()` +
@@ -1381,15 +1378,16 @@ synchronous and returns `this` purely by mutating internal state (`modelQuery`, 
 `page`, `limit`, `skip`) — none of them touch the database. `execute()` is the only method that
 actually awaits anything. Calling it earlier in the chain would run the query before `sort()`,
 `paginate()`, `fields()`, `populate()`, or `lean()` had a chance to configure `modelQuery`, and
-because those methods mutate `this.modelQuery` by *reassignment*, any state built up after
+because those methods mutate `this.modelQuery` by _reassignment_, any state built up after
 `execute()` runs would be irrelevant — the query has already fired.
 
 **Internal algorithm:**
 
 1. `this.modelQuery` is a Mongoose `Query` object, which is "thenable" (implements `.then()`) — no
    explicit `.exec()` call is needed; `Promise.all` awaiting it directly is sufficient to trigger
-  
+
    execution.
+
 2. `this.modelQuery` and `this.getMeta()` run **concurrently** via `Promise.all` — two separate
    round trips to MongoDB (the main `find` and the `countDocuments` inside `getMeta()`) happen in
    parallel rather than sequentially, which reduces total latency versus awaiting them one after
@@ -1473,7 +1471,7 @@ Final response shape:
 export const getAllCategories = async (query: Record<string, unknown>) => {
   const queryParams = {
     ...query,
-    isActive: query.isActive ?? true,   // service-layer default, composed pre-builder
+    isActive: query.isActive ?? true, // service-layer default, composed pre-builder
   };
 
   const { data, meta } = await new QueryBuilder(
@@ -1490,7 +1488,7 @@ export const getAllCategories = async (query: Record<string, unknown>) => {
     .fields()
     .populate()
     .lean()
-    .execute();   // MUST be last — this is what actually hits the database
+    .execute(); // MUST be last — this is what actually hits the database
 
   return { results: data, meta };
 };
@@ -1499,7 +1497,7 @@ export const getAllCategories = async (query: Record<string, unknown>) => {
 **Edge Cases**
 
 - If `execute()` is called mid-chain (before `paginate()`/`fields()`/etc.), the query still runs —
-  Mongoose queries fire on `await`/`.then()`. Any chain methods called *after* `execute()` has
+  Mongoose queries fire on `await`/`.then()`. Any chain methods called _after_ `execute()` has
   already resolved would be reassigning `this.modelQuery` on an already-executed query object,
   which has no further effect on the already-returned result.
 
@@ -1524,15 +1522,15 @@ export const getAllCategories = async (query: Record<string, unknown>) => {
 
 ```ts
 export interface FilterConfig {
-  searchableFields?: QueryField<any>[];
-  filterableFields?: QueryField<any>[];
-  sortableFields?: QueryField<any>[];
-  selectableFields?: QueryField<any>[];
-  numberFields?: QueryField<any>[];
-  booleanFields?: QueryField<any>[];
-  objectIdFields?: QueryField<any>[];
-  arrayFields?: QueryField<any>[];
-  enumFields?: QueryField<any>[];
+  searchableFields?: string[];
+  filterableFields?: string[];
+  sortableFields?: string[];
+  selectableFields?: string[];
+  numberFields?: string[];
+  booleanFields?: string[];
+  objectIdFields?: string[];
+  arrayFields?: string[];
+  enumFields?: string[];
   rangeFields?: RangeFilterConfig[];
   populate?: PopulateOptions[];
   defaultSort?: string;
@@ -1544,43 +1542,43 @@ export interface RangeFilterConfig {
   field: string;
   minKey?: string;
   maxKey?: string;
-  type?: "number" | "date";
+  type?: 'number' | 'date';
 }
 
 export type QueryField<T> = Extract<keyof T, string> | string;
 ```
 
-| Property | Type | Required? | Used by | Default / Fallback Behavior | Generated Query Effect |
-|---|---|---|---|---|---|
-| `searchableFields` | `QueryField<any>[]` | Optional (`?? []`) | `search()` | Empty → `search()` becomes a no-op even if a keyword is sent | Adds `$or` of `$regex` conditions across listed fields |
-| `filterableFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty → `filter()` is a no-op | Adds equality / `$in` / ObjectId / numeric conditions per field |
-| `numberFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty set → no field treated as numeric | Field parsed via `getNumber()`; silently skipped if non-numeric |
-| `booleanFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty set → no field treated as boolean | Field parsed via `getBoolean()`; only exact `"true"`/`"false"` (case-insensitive) produce a filter |
-| `objectIdFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty set → no field treated as ObjectId | Field cast to `Types.ObjectId` if valid; silently dropped if invalid |
-| `arrayFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty set → no field treated as CSV array | Field parsed via `getArray()` into `{ $in: [...] }` |
-| `enumFields` | `QueryField<any>[]` | Optional (`?? []`) | `filter()` | Empty set → no field treated as enum | Currently identical to the unclassified/default path — plain string equality |
-| `rangeFields` | `RangeFilterConfig[]` | Optional (`?? []`) | `range()` | Empty → `range()` is a no-op | Adds `{ field: { $gte, $lte } }` conditions with auto-derived or custom query-key names |
-| `sortableFields` | `QueryField<any>[]` | Optional (`?? []`) | `sort()` | Empty → invalid/all `sort` tokens dropped | Whitelist-checked `.sort()` via Mongoose's `"field -field"` string syntax |
-| `selectableFields` | `QueryField<any>[]` | Optional (`?? []`) | `fields()` | Empty → all `fields` tokens dropped → no `.select()` | `.select()` on whitelisted fields only |
-| `populate` | `PopulateOptions[]` | Optional (`?? []`) | `populate()` | Empty → no-op | `.populate(entry)` per entry, unconditionally applied |
-| `defaultSort` | `string` | Optional | `sort()` | Absent → no sort when `sort` param is missing | Applied only when the `sort` param is absent entirely |
-| `defaultLimit` | `number` | Optional | `paginate()`, constructor | `DEFAULT_LIMIT` (20) | Initial `this.limit`; fallback when no valid `?limit=` is sent |
-| `maxLimit` | `number` | Optional | `paginate()` | `MAX_LIMIT` (100) | Upper cap on an explicitly-supplied `?limit=` via `Math.min` |
+| Property           | Type                  | Required?          | Used by                   | Default / Fallback Behavior                                  | Generated Query Effect                                                                             |
+| ------------------ | --------------------- | ------------------ | ------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `searchableFields` | `string[]`            | Optional (`?? []`) | `search()`                | Empty → `search()` becomes a no-op even if a keyword is sent | Adds `$or` of `$regex` conditions across listed fields                                             |
+| `filterableFields` | `string[]`            | Optional (`?? []`) | `filter()`                | Empty → `filter()` is a no-op                                | Adds equality / `$in` / ObjectId / numeric conditions per field                                    |
+| `numberFields`     | `string[]`            | Optional (`?? []`) | `filter()`                | Empty set → no field treated as numeric                      | Field parsed via `getNumber()`; silently skipped if non-numeric                                    |
+| `booleanFields`    | `string[]`            | Optional (`?? []`) | `filter()`                | Empty set → no field treated as boolean                      | Field parsed via `getBoolean()`; only exact `"true"`/`"false"` (case-insensitive) produce a filter |
+| `objectIdFields`   | `string[]`            | Optional (`?? []`) | `filter()`                | Empty set → no field treated as ObjectId                     | Field cast to `Types.ObjectId` if valid; silently dropped if invalid                               |
+| `arrayFields`      | `string[]`            | Optional (`?? []`) | `filter()`                | Empty set → no field treated as CSV array                    | Field parsed via `getArray()` into `{ $in: [...] }`                                                |
+| `enumFields`       | `string[]`            | Optional (`?? []`) | `filter()`                | Empty set → no field treated as enum                         | Currently identical to the unclassified/default path — plain string equality                       |
+| `rangeFields`      | `RangeFilterConfig[]` | Optional (`?? []`) | `range()`                 | Empty → `range()` is a no-op                                 | Adds `{ field: { $gte, $lte } }` conditions with auto-derived or custom query-key names            |
+| `sortableFields`   | `string[]`            | Optional (`?? []`) | `sort()`                  | Empty → invalid/all `sort` tokens dropped                    | Whitelist-checked `.sort()` via Mongoose's `"field -field"` string syntax                          |
+| `selectableFields` | `string[]`            | Optional (`?? []`) | `fields()`                | Empty → all `fields` tokens dropped → no `.select()`         | `.select()` on whitelisted fields only                                                             |
+| `populate`         | `PopulateOptions[]`   | Optional (`?? []`) | `populate()`              | Empty → no-op                                                | `.populate(entry)` per entry, unconditionally applied                                              |
+| `defaultSort`      | `string`              | Optional           | `sort()`                  | Absent → no sort when `sort` param is missing                | Applied only when the `sort` param is absent entirely                                              |
+| `defaultLimit`     | `number`              | Optional           | `paginate()`, constructor | `DEFAULT_LIMIT` (20)                                         | Initial `this.limit`; fallback when no valid `?limit=` is sent                                     |
+| `maxLimit`         | `number`              | Optional           | `paginate()`              | `MAX_LIMIT` (100)                                            | Upper cap on an explicitly-supplied `?limit=` via `Math.min`                                       |
 
 **Constants** (`queryBuilder.constants.ts`):
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `DEFAULT_PAGE` | `1` | 1-indexed page fallback |
-| `DEFAULT_LIMIT` | `20` | Page-size fallback |
-| `MAX_LIMIT` | `100` | Hard cap on `?limit=` |
-| `SEARCH_QUERY_KEY` | `"search"` | Free-text search key |
-| `SORT_QUERY_KEY` | `"sort"` | Sort key |
-| `PAGE_QUERY_KEY` | `"page"` | Page key |
-| `LIMIT_QUERY_KEY` | `"limit"` | Limit key |
-| `FIELDS_QUERY_KEY` | `"fields"` | Field-selection key |
-| `DEFAULT_SORT` | `"-createdAt"` | Exported but **not consumed by the builder itself** — it's a convenience default available to configs that want to match it |
-| `DEFAULT_SELECT` | `"-__v"` | Exported but **not consumed by the builder itself** — available if a module wants to exclude the Mongoose version key by default |
+| Constant           | Value          | Meaning                                                                                                                          |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `DEFAULT_PAGE`     | `1`            | 1-indexed page fallback                                                                                                          |
+| `DEFAULT_LIMIT`    | `20`           | Page-size fallback                                                                                                               |
+| `MAX_LIMIT`        | `100`          | Hard cap on `?limit=`                                                                                                            |
+| `SEARCH_QUERY_KEY` | `"search"`     | Free-text search key                                                                                                             |
+| `SORT_QUERY_KEY`   | `"sort"`       | Sort key                                                                                                                         |
+| `PAGE_QUERY_KEY`   | `"page"`       | Page key                                                                                                                         |
+| `LIMIT_QUERY_KEY`  | `"limit"`      | Limit key                                                                                                                        |
+| `FIELDS_QUERY_KEY` | `"fields"`     | Field-selection key                                                                                                              |
+| `DEFAULT_SORT`     | `"-createdAt"` | Exported but **not consumed by the builder itself** — it's a convenience default available to configs that want to match it      |
+| `DEFAULT_SELECT`   | `"-__v"`       | Exported but **not consumed by the builder itself** — available if a module wants to exclude the Mongoose version key by default |
 
 ---
 
@@ -1593,22 +1591,29 @@ demonstrates every major `FilterConfig` option working together.
 
 ```ts
 export const jobCategoryBuilderConfig: FilterConfig = {
-  searchableFields: ["name", "slug"],
-  filterableFields: ["isActive", "parentId", "depth"],
-  numberFields: ["depth", "jobCount"],
-  booleanFields: ["isActive"],
-  objectIdFields: ["parentId"],
+  searchableFields: ['name', 'slug'],
+  filterableFields: ['isActive', 'parentId', 'depth'],
+  numberFields: ['depth', 'jobCount'],
+  booleanFields: ['isActive'],
+  objectIdFields: ['parentId'],
   rangeFields: [
-    { field: "depth", minKey: "minDepth", maxKey: "maxDepth" },
-    { field: "jobCount", minKey: "minJobCount", maxKey: "maxJobCount" },
+    { field: 'depth', minKey: 'minDepth', maxKey: 'maxDepth' },
+    { field: 'jobCount', minKey: 'minJobCount', maxKey: 'maxJobCount' },
   ],
-  sortableFields: ["name", "depth", "jobCount", "createdAt", "updatedAt"],
-  defaultSort: "name",
+  sortableFields: ['name', 'depth', 'jobCount', 'createdAt', 'updatedAt'],
+  defaultSort: 'name',
   selectableFields: [
-    "name", "slug", "icon", "parentId", "depth", "jobCount",
-    "isActive", "createdAt", "updatedAt",
+    'name',
+    'slug',
+    'icon',
+    'parentId',
+    'depth',
+    'jobCount',
+    'isActive',
+    'createdAt',
+    'updatedAt',
   ],
-  populate: [{ path: "parentId", select: "name slug" }],
+  populate: [{ path: 'parentId', select: 'name slug' }],
   defaultLimit: 20,
   maxLimit: 100,
 };
@@ -1643,7 +1648,7 @@ const getAllCategories = async (query: Record<string, unknown>) => {
 
 Two patterns worth noting in that real code:
 
-1. **Composition before construction.** `queryParams` is assembled *before* the builder (merging a
+1. **Composition before construction.** `queryParams` is assembled _before_ the builder (merging a
    service-layer `isActive` default). This works cleanly because `getBoolean()`/`getNumber()`
    accept native types, not just strings.
 2. **Meta is returned alongside data.** The `{ results: data, meta }` envelope travels to the
@@ -1657,7 +1662,7 @@ The module's `getCategoryQuerySchema` extends the shared `queryBuilderSchema` (w
 five shared keys `search`, `sort`, `fields`, `page`, `limit` as strings with numeric constraints on
 `page`/`limit`) with module-specific keys: `isActive`, `parentId`, `depth`, `jobCount`, `minDepth`,
 `maxDepth`, `minJobCount`, `maxJobCount`. This means invalid query values are rejected at the
-middleware layer *before* the builder ever sees them — the recommended pattern for any module that
+middleware layer _before_ the builder ever sees them — the recommended pattern for any module that
 adopts the builder.
 
 ---
@@ -1668,15 +1673,15 @@ The canonical order used throughout the codebase is:
 
 ```ts
 builder
-  .search()    // 1. filter-building
-  .filter()    // 1. filter-building
-  .range()     // 1. filter-building
-  .sort()      // 2. query-shaping
-  .paginate()  // 2. query-shaping
-  .fields()    // 2. query-shaping
-  .populate()  // 2. query-shaping
-  .lean()      // 2. query-shaping
-  .execute();  // 3. terminal
+  .search() // 1. filter-building
+  .filter() // 1. filter-building
+  .range() // 1. filter-building
+  .sort() // 2. query-shaping
+  .paginate() // 2. query-shaping
+  .fields() // 2. query-shaping
+  .populate() // 2. query-shaping
+  .lean() // 2. query-shaping
+  .execute(); // 3. terminal
 ```
 
 Within group 1, order between `search()`/`filter()`/`range()` is irrelevant — they all merge into
@@ -1704,7 +1709,7 @@ The most valuable habits that emerge from how this builder is actually wired:
    schema is your only enforcement point.
 3. **Whitelist deliberately.** Every field that appears in API documentation for an endpoint must
    also appear in the corresponding `searchableFields`/`filterableFields`/`sortableFields`/
-   `selectableFields` — the builder fails *silently* for unmapped fields, which is a quiet contract
+   `selectableFields` — the builder fails _silently_ for unmapped fields, which is a quiet contract
    violation for clients.
 4. **Classify by schema type.** Every field in `filterableFields` that is an ObjectId ref goes in
    `objectIdFields`; every numeric field goes in `numberFields`; every boolean in `booleanFields`.
@@ -1713,28 +1718,28 @@ The most valuable habits that emerge from how this builder is actually wired:
 5. **Keep `defaultLimit <= maxLimit`** and never set either to `0` (see §8.1).
 6. **Pair the builder with `lean()`** on every read-only list endpoint.
 7. **Index what you query.** Fields in `searchableFields`, `filterableFields`, `objectIdFields`,
-   `rangeFields`, and `sortableFields` should carry matching indexes so the main find *and* the
+   `rangeFields`, and `sortableFields` should carry matching indexes so the main find _and_ the
    `countDocuments` in `getMeta()` both stay fast.
 
 ---
 
 ## 13. Common Mistakes
 
-| # | Mistake | Symptom |
-|---|---|---|
-| 1 | Passing `Model.find()` as the first constructor argument | `getMeta()` misbehaves (count runs against the chained query, not a fresh base) |
-| 2 | Forgetting `paginate()` before `execute()` | Correct data, but `meta` describes an unpaginated result (wrong `skip`/`limit`/`totalPages`) |
-| 3 | Expecting an invalid `sort` value to fall back to `defaultSort` | No sort applied at all — silent natural-order results |
-| 4 | Setting `defaultLimit: 0` or `maxLimit: 0` | `Infinity` pagination metadata; possibly enormous default pages |
-| 5 | Leaving an ObjectId field unclassified | Plain-string filter never matches stored ObjectIds — endpoint appears broken |
-| 6 | Expecting `enumFields` to validate values | It doesn't — behaves exactly like the unclassified string path |
-| 7 | Calling `.lean(false)` to "undo" `.lean()` | No-op; results remain lean if it was enabled earlier in the chain |
-| 8 | Assuming `search=` input is regex-escaped | Metacharacters are interpreted as real regex; unexpected matches or expensive scans |
-| 9 | Configuring `defaultLimit > maxLimit` | Omitted `?limit=` silently serves `defaultLimit` records (the cap only applies to *explicit* values) |
-| 10 | Putting the same field in `filterableFields` as both a range field and an equality field | Shallow-spread merge overwrites the key — last writer wins, silently dropping the other condition |
-| 11 | `page=1.5` or other fractional input | Fractional `skip` passed to Mongoose — no integer validation occurs |
-| 12 | Date range `toDate=YYYY-MM-DD` expecting end-of-day inclusion | Resolves to midnight UTC; documents later that day are excluded |
-| 13 | Expecting `type: "date"` to be inferred from field name | Numeric mode is the default; `getNumber("2025-01-01")` → `NaN` → field skipped silently |
+| #   | Mistake                                                                                  | Symptom                                                                                              |
+| --- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1   | Passing `Model.find()` as the first constructor argument                                 | `getMeta()` misbehaves (count runs against the chained query, not a fresh base)                      |
+| 2   | Forgetting `paginate()` before `execute()`                                               | Correct data, but `meta` describes an unpaginated result (wrong `skip`/`limit`/`totalPages`)         |
+| 3   | Expecting an invalid `sort` value to fall back to `defaultSort`                          | No sort applied at all — silent natural-order results                                                |
+| 4   | Setting `defaultLimit: 0` or `maxLimit: 0`                                               | `Infinity` pagination metadata; possibly enormous default pages                                      |
+| 5   | Leaving an ObjectId field unclassified                                                   | Plain-string filter never matches stored ObjectIds — endpoint appears broken                         |
+| 6   | Expecting `enumFields` to validate values                                                | It doesn't — behaves exactly like the unclassified string path                                       |
+| 7   | Calling `.lean(false)` to "undo" `.lean()`                                               | No-op; results remain lean if it was enabled earlier in the chain                                    |
+| 8   | Expecting `search=` to accept regex syntax                                               | Input is escaped and matched literally — `a.b` only matches the text "a.b"                           |
+| 9   | Configuring `defaultLimit > maxLimit`                                                    | Omitted `?limit=` silently serves `defaultLimit` records (the cap only applies to _explicit_ values) |
+| 10  | Putting the same field in `filterableFields` as both a range field and an equality field | Shallow-spread merge overwrites the key — last writer wins, silently dropping the other condition    |
+| 11  | `page=1.5` or other fractional input                                                     | Fractional `skip` passed to Mongoose — no integer validation occurs                                  |
+| 12  | Date range `toDate=YYYY-MM-DD` expecting end-of-day inclusion                            | Resolves to midnight UTC; documents later that day are excluded                                      |
+| 13  | Expecting `type: "date"` to be inferred from field name                                  | Numeric mode is the default; `getNumber("2025-01-01")` → `NaN` → field skipped silently              |
 
 ---
 
@@ -1763,26 +1768,36 @@ concurrent; never sequentially `await` data and then meta.
 
 ## 15. Appendix: Quick Reference Cheat Sheet
 
-| URL Param | Key | Example | Effect |
-|---|---|---|---|
-| Free-text search | `search` | `?search=react` | `$or` of case-insensitive `$regex` across `searchableFields` |
-| Sort | `sort` | `?sort=-createdAt,name` | Whitelist-checked `.sort("-createdAt name")` |
-| Pagination | `page`, `limit` | `?page=2&limit=10` | `.skip(10).limit(10)`, `limit` capped at `maxLimit` (default cap `100`) |
-| Field selection | `fields` | `?fields=name,slug` | `.select()` on whitelisted fields only |
-| Filter (string) | any `filterableFields` key | `?slug=backend` | Plain-string equality |
-| Filter (number) | any `numberFields` key | `?depth=2` | Numeric equality |
-| Filter (boolean) | any `booleanFields` key | `?isActive=true` | Literal (case-insensitive) `"true"`/`"false"` |
-| Filter (CSV array) | any `arrayFields` key | `?role=ADMIN,HR` | `{ $in: ["ADMIN", "HR"] }` |
-| Filter (ObjectId) | any `objectIdFields` key | `?parentId=64f1a2...` | Cast to `ObjectId`, dropped if invalid |
-| Range (number) | `min{Field}` / `max{Field}` | `?minDepth=1&maxDepth=5` | `{ field: { $gte, $lte } }` (custom keys via `minKey`/`maxKey`) |
-| Range (date) | `start{Field}` / `end{Field}` | `?startCreatedAt=2025-01-01` | Date range (requires `type: "date"` in config) |
+| URL Param          | Key                           | Example                      | Effect                                                                  |
+| ------------------ | ----------------------------- | ---------------------------- | ----------------------------------------------------------------------- |
+| Free-text search   | `search`                      | `?search=react`              | `$or` of case-insensitive `$regex` across `searchableFields`            |
+| Sort               | `sort`                        | `?sort=-createdAt,name`      | Whitelist-checked `.sort("-createdAt name")`                            |
+| Pagination         | `page`, `limit`               | `?page=2&limit=10`           | `.skip(10).limit(10)`, `limit` capped at `maxLimit` (default cap `100`) |
+| Field selection    | `fields`                      | `?fields=name,slug`          | `.select()` on whitelisted fields only                                  |
+| Filter (string)    | any `filterableFields` key    | `?slug=backend`              | Plain-string equality                                                   |
+| Filter (number)    | any `numberFields` key        | `?depth=2`                   | Numeric equality                                                        |
+| Filter (boolean)   | any `booleanFields` key       | `?isActive=true`             | Literal (case-insensitive) `"true"`/`"false"`                           |
+| Filter (CSV array) | any `arrayFields` key         | `?role=ADMIN,HR`             | `{ $in: ["ADMIN", "HR"] }`                                              |
+| Filter (ObjectId)  | any `objectIdFields` key      | `?parentId=64f1a2...`        | Cast to `ObjectId`, dropped if invalid                                  |
+| Range (number)     | `min{Field}` / `max{Field}`   | `?minDepth=1&maxDepth=5`     | `{ field: { $gte, $lte } }` (custom keys via `minKey`/`maxKey`)         |
+| Range (date)       | `start{Field}` / `end{Field}` | `?startCreatedAt=2025-01-01` | Date range (requires `type: "date"` in config)                          |
 
 **Canonical service snippet:**
 
 ```ts
 const { data, meta } = await new QueryBuilder(
-  SomeModel, SomeModel.find(), req.query, someBuilderConfig
+  SomeModel,
+  SomeModel.find(),
+  req.query,
+  someBuilderConfig,
 )
-  .search().filter().range().sort().paginate().fields().populate().lean()
+  .search()
+  .filter()
+  .range()
+  .sort()
+  .paginate()
+  .fields()
+  .populate()
+  .lean()
   .execute();
 ```

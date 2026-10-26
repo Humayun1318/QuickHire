@@ -1,10 +1,11 @@
 import z from 'zod';
+import { httpUrl } from './common.validation';
 
 export const socialLinksSchemaValidation = z
   .object({
-    linkedin: z.url({ error: 'Invalid LinkedIn URL' }).optional(),
-    github: z.url({ error: 'Invalid GitHub URL' }).optional(),
-    portfolio: z.url({ error: 'Invalid portfolio URL' }).optional(),
-    twitter: z.url({ error: 'Invalid Twitter URL' }).optional(),
+    linkedin: httpUrl('Invalid LinkedIn URL').optional(),
+    github: httpUrl('Invalid GitHub URL').optional(),
+    portfolio: httpUrl('Invalid portfolio URL').optional(),
+    twitter: httpUrl('Invalid Twitter URL').optional(),
   })
   .nullable();
